@@ -47,3 +47,6 @@ waitress==2.0.0
 Werkzeug==2.0.1
 WTForms==2.3.3
 yarl==1.6.3
+
+Flask~=2.0.1
+SQLAlchemy~=1.4.23
