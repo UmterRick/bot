@@ -1,10 +1,15 @@
+import datetime
+import json
+
 from flask import Flask
-from flask_admin.form import fields
+from flask_admin.form import fields, rules
 from flask_admin.contrib.sqla import ModelView
-from sqlalchemy import Integer, ForeignKey, String
+from flask_admin.model import typefmt
+from flask_admin.model.template import macro
+from sqlalchemy import Integer, ForeignKey, String, Time
 from flask_admin import Admin
-from flask_sqlalchemy import  SQLAlchemy
-from wtforms import form, fields
+from flask_sqlalchemy import SQLAlchemy
+from wtforms import form, fields, validators
 
 app = Flask(__name__)
 app.config['FLASK_ADMIN_SWATCH'] = 'cerulean'
@@ -37,24 +42,56 @@ class Course(db.Model):
     description = db.Column(String(255))
     price = db.Column(db.Integer)
     category = db.Column(Integer, ForeignKey('categories.id', ondelete='CASCADE', onupdate='CASCADE'))
+    groups = db.relationship('Group', backref='Course', lazy='dynamic')
 
     def __repr__(self):
         return self.name
 
 
+class CourseView(ModelView):
+    form_create_rules = [
+        rules.Field('trainer'),
+    ]
+
+    def on_model_change(self, form, model, is_created):
+        # if end date before start date or end date in the past, flag them invalid
+        try:
+            trainer = json.loads(form.trainer._value())
+            super().on_model_change(form, model, is_created)
+        except Exception as ex:
+            raise validators.ValidationError('Check trainer filed pattern {"trainer": ["name1", "name2"]}')
 
 
-class GroupModel(db.Model):
+class Group(db.Model):
     __tablename__ = 'groups'
 
     id = db.Column(Integer, primary_key=True)
-    daytime = db.Column(String(255))
+    day = db.Column(String(255))
+    time = db.Column(Time)
     type = db.Column(Integer)
     chat = db.Column(String(255))
     course = db.Column(Integer, ForeignKey('courses.id', ondelete='CASCADE', onupdate='CASCADE'))
 
     def __repr__(self):
         return self.course, self.daytime
+
+
+class GroupView(ModelView):
+    form_choices = {
+        'day': [
+            ('Понеділок', 'Понеділок'), ('Вівторок', 'Вівторок'),
+            ('Середа', 'Середа'), ('Четвер', 'Четвер'),
+            ("П'ятниця", "П'ятниця"), ('Субота', 'Субота'), ('Неділя', 'Неділя')],
+
+        'type': [('Yes', 'Yes'), ('No', 'No')]
+
+    }
+
+    column_labels = dict(type='Offline')
+
+    def on_model_change(self, form, model, is_created):
+        model.type = 1 if model.type == "Yes" else 0
+        return model
 
 
 class User(db.Model):
@@ -81,7 +118,19 @@ class User(db.Model):
 class UserView(ModelView):
     column_list = ('name', 'nickname', 'contact', 'type',)
     form_columns = ('name', 'nickname', 'contact', 'type',)
-
+    can_create = False
+    form_choices = {
+        'type': [
+            ('admin', 'admin'), ('trainer', 'trainer'), ('student', 'student')
+    ]}
+    def on_model_change(self, form, model, is_created):
+        if model.type == 'admin':
+            model.type = 1
+        elif model.type == 'trainer':
+            model.type = 2
+        elif model.type == 'student':
+            model.type = 3
+        return model
 
 class UserGroupModel(db.Model):
     __tablename__ = 'user_group'
@@ -96,11 +145,12 @@ class UserGroupModel(db.Model):
 
 admin = Admin(app, name='Bot', template_mode='bootstrap3')
 admin.add_view(ModelView(Category, db.session))
-admin.add_view(ModelView(Course, db.session))
+admin.add_view(CourseView(Course, db.session))
 admin.add_view(UserView(User, db.session))
+admin.add_view(GroupView(Group, db.session))
 
-db.create_all()
 app.secret_key = app.config['SECRET']
 
 if __name__ == "__main__":
+    db.create_all()
     app.run()

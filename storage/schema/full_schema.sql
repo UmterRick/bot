@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS categories (
-	"id" INTEGER NOT NULL,
+	"id" SERIAL NOT NULL,
 	"name" varchar(255) NOT NULL,
 	CONSTRAINT "category_pk" PRIMARY KEY ("id")
 ) WITH (
@@ -9,13 +9,14 @@ CREATE TABLE IF NOT EXISTS categories (
 
 
 CREATE TABLE IF NOT EXISTS courses (
-	"id" INTEGER NOT NULL,
+	"id" SERIAL NOT NULL UNIQUE,
 	"name" varchar(255) NOT NULL,
 	"category" INTEGER NOT NULL,
 	"trainer" varchar(255) NOT NULL,
+	"link" text default '',
 	"description" TEXT NOT NULL,
 	"price" integer NOT NULL,
-	CONSTRAINT "courses_pk" PRIMARY KEY ("id")
+	CONSTRAINT "courses_pk" PRIMARY KEY ("id", "name")
 ) WITH (
   OIDS=FALSE
 );
@@ -23,8 +24,9 @@ CREATE TABLE IF NOT EXISTS courses (
 
 
 CREATE TABLE IF NOT EXISTS groups (
-	"id" serial NOT NULL,
-	"daytime" TEXT NOT NULL,
+	"id" SERIAL NOT NULL UNIQUE ,
+	"day" TEXT NOT NULL,
+	"time" time NOT NULL ,
 	"type" BOOLEAN NOT NULL,
 	"course" INTEGER NOT NULL,
 	"chat" varchar(255) NOT NULL,
@@ -36,22 +38,23 @@ CREATE TABLE IF NOT EXISTS groups (
 
 
 CREATE TABLE IF NOT EXISTS users (
-	"id" serial NOT NULL,
+	"id" SERIAL NOT NULL UNIQUE ,
 	"name" varchar(255) NOT NULL,
 	"nickname" varchar(255) NOT NULL,
-	"telegram" varchar(255) NOT NULL,
+	"telegram" INTEGER NOT NULL,
+	"contact" varchar(40),
 	"type" integer NOT NULL,
-	"state" varchar(255) NOT NULL,
-	"at_category" varchar(255) NOT NULL,
-	"temp_state_1" varchar(255) NOT NULL,
-	"temp_state_2" varchar(255) NOT NULL,
+	"state" TEXT NOT NULL,
+	"at_category" varchar(255) ,
+	"temp_state_1" varchar(255) ,
+	"temp_state_2" varchar(255),
 	CONSTRAINT "users_pk" PRIMARY KEY ("id")
 ) WITH (
   OIDS=FALSE
 );
 
 
-CREATE TABLE user_group (
+CREATE TABLE IF NOT EXISTS user_group (
 	"user" integer NOT NULL,
 	"group" integer NOT NULL,
 	"type" varchar(255) NOT NULL
@@ -65,8 +68,6 @@ CREATE TABLE user_group (
 ALTER TABLE "courses" ADD CONSTRAINT "courses_fk0" FOREIGN KEY ("category") REFERENCES "categories"("id") ON UPDATE CASCADE ON DELETE CASCADE ;
 
 ALTER TABLE "groups" ADD CONSTRAINT "groups_fk0" FOREIGN KEY ("course") REFERENCES "courses"("id") ON UPDATE CASCADE ON DELETE CASCADE ;
-
-ALTER TABLE "users" ADD CONSTRAINT "users_fk0" FOREIGN KEY ("id") REFERENCES "groups"("id") ON UPDATE CASCADE ON DELETE CASCADE ;
 
 ALTER TABLE "user_group" ADD CONSTRAINT "user_group_fk0" FOREIGN KEY ("user") REFERENCES "users"("id");
 

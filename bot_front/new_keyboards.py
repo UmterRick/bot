@@ -1,10 +1,11 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Update
 from datetime import datetime, timedelta
 from utils import create_callback_data
+from user_utils import get_trainers
 from aiogram import types
 from database import *
 import calendar
-
+import json
 
 def ChatTypeKB():
     keyboard = InlineKeyboardMarkup()
@@ -54,22 +55,20 @@ def MenuKB(user_type):
     return keyboard
 
 
-def TrainersKB(store):
+async def TrainersKB(store):
     keyboard = InlineKeyboardMarkup()
-    trainers = store.select('courses', None, columns=('trainer',))
-    print(trainers)
-    trainers = DataBase.get_trainers(DataBase())
+    trainers = await get_trainers(store)
     for trainer in trainers:
         callback = list()
         button = str()
-        for course in trainers[trainer]:
-            temp = callback + trainers[trainer][course]['groups']
-            callback = temp
-            if len(callback) == 0:
-                button = '[]'
-            else:
-                button = str(temp)[1:-1]
-        trainer_btn = InlineKeyboardButton(trainer, callback_data=create_callback_data(trainer, button))
+        # for course in trainers[trainer]:
+        #     temp = callback + trainers[trainer][course]['groups']
+        #     callback = temp
+        #     if len(callback) == 0:
+        #         button = '[]'
+        #     else:
+        #         button = str(temp)[1:-1]
+        trainer_btn = InlineKeyboardButton(trainer, callback_data=trainer)
         keyboard.row(trainer_btn)
     back_btn = InlineKeyboardButton('⬅️ Назад', callback_data='turn_back')
     keyboard.row(back_btn)
@@ -110,12 +109,14 @@ def ContactKB():
     return keyboard
 
 
-def TopicKB():
+async def TopicKB(store):
     # global TOPICS
-    topics = DataBase.getTopics(DataBase())
+    topics = await store.select('categories', None, ('*',))
+    # topics = DataBase.getTopics(DataBase())
+
     keyboard = types.InlineKeyboardMarkup(row_width=2)
-    for name in topics.keys():
-        category_btn = InlineKeyboardButton(name, callback_data=topics[name])
+    for topic in topics:
+        category_btn = InlineKeyboardButton(topic['name'], callback_data=topic['id'])
         keyboard.row(category_btn)
     back_btn = InlineKeyboardButton('⬅️ Назад', callback_data='turn_back')
     keyboard.row(back_btn)
@@ -415,3 +416,10 @@ def AllGroupsKB():
         return keyboard
     except:
         PrintException()
+
+
+from storage.db_utils import DataStore
+import asyncio
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(TrainersKB(DataStore()))

@@ -2,6 +2,7 @@ import pickle
 from storage.db_utils import DataStore, StoreError
 from utils import set_logger
 from sys import _getframe
+import json
 logger = set_logger('main')
 USER_TYPE = {
     0: 'Гість',
@@ -38,4 +39,11 @@ async def get_state(chat, store: DataStore):
     #     logger.error(f"{_getframe().f_code.co_name} | Unexpected exception | {ex}")
 
 
+async def get_trainers(store):
+    trainers = await store.select('courses', None, columns=('trainer',))
+    all_trainers = list()
+    for row in trainers:
+        names = json.loads(row['trainer'])
+        all_trainers += names.get('trainer', [])
+    return list(set(all_trainers))
 
