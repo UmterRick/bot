@@ -1,7 +1,13 @@
 import requests
 from bs4 import BeautifulSoup
-from configs import HEADERS, C_URL
-from configs import DB_NAME
+# from configs import DB_NAME
+from utils import read_config
+import json
+
+
+config = read_config('urls.json')
+HEADERS = config.get("HEADERS", "")
+C_URL = config.get("C_URL", "")
 
 
 def get_html(url, params=None):
@@ -9,36 +15,59 @@ def get_html(url, params=None):
     print('Wrong code status') if r.status_code != 200 else None
     return r
 
-def get_content(html):
+
+async def get_content(store):
+    html = get_html(C_URL)
     soup = BeautifulSoup(html.text, 'html.parser')
+
     items = soup.find_all('div', class_='content')
     topics_search = soup.find_all('div', class_='short')
-    topics = {}
-    counter = 1
-    for topic in topics_search:
-        topics[counter] = topic.text
-        counter += 1
-    courseID_dict = {}
 
-    for block_id in range(1,len(topics.keys())+1):
-        names = items[block_id-1].find_all('p')
-        links = items[block_id-1].find_all('a')
-        course_id = 1
-        for name in names:
-            if str(name.text).startswith('ᐅ'):
-                name = str(name.text).replace('ᐅ ', '')
-                if '(' in name:
-                    body = name[0:name.find('(')]
-                    trainer = name[name.find('(') + 1:name.find(')')]
+    blocks = await store.select('categories', None, ('name',))
+    courses = await store.select('courses', None, {'name'})
+    courses = list(course['name'] for course in courses)
+    for num, topic in enumerate(topics_search):
+        if len(blocks) != len(topics_search):
+            try:
+                if topic.text not in blocks:
+                    await store.insert('categories', {'name': topic.text})
+            except Exception as ex:
+                print(ex)
+        parsed_courses = list()
+        records = list(p for p in items[num].find_all('p') if str(p.text).startswith('ᐅ'))
+        for i in records:
+            title = i.text
+            link = i.find('a')
+            pare = (title, link)
+            if link and link.has_attr('href'):
+                link = link['href']
+                pare = (title, link)
+            parsed_courses.append(pare)
+        for title, link in parsed_courses:
+            if str(title).startswith('ᐅ'):
+                title_clear = str(title).replace('ᐅ ', '')
+                if '(' in title_clear:
+                    name = title_clear[0:title_clear.find('(')]
+                    trainer = title_clear[title_clear.find('(') + 1:title_clear.find(')')]
+                    trainer = {'trainer': trainer.split(',')}
+                    trainer = json.dumps(trainer, ensure_ascii=False)
+
                 else:
-                    body = name[0:name.find('👉')]
-                    trainer = '----'
-                full_id = str(block_id) + str(course_id)
-                courseID_dict[full_id] = body
-                if body == 'Програма підготовки дітей до школи Календарно-тематичний план':
-                    db_add_course(DB_NAME, course_id, body, trainer, '_________', str(block_id), topics[block_id])
-                else:
-                    db_add_course(DB_NAME, course_id, body, trainer, links[course_id - 1].get('href'), str(block_id), topics[block_id])
-                    course_id += 1
-    return topics, courseID_dict
+                    name = title_clear[0:title_clear.find('👉')]
+                    trainer = None
+                if name not in courses:
+                    category = await store.select_one('categories', {'name': topic.text}, ('id',))
+                    course = {
+                        'name': name,
+                        'category': category.get('id'),
+                        'trainer': trainer,
+                        'link': link,
+                        'description': "-",
+                        'price': 0
+                    }
+                    try:
+                        await store.insert('courses', course)
+                    except Exception as ex:
+                        print(ex)
+
 

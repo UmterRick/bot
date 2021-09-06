@@ -1,6 +1,6 @@
 import logging
 import psycopg2
-from utils import read_config, ROOT_DIR
+from utils import read_config, ROOT_DIR, set_logger
 from sys import intern, _getframe
 import logging
 from typing import (
@@ -18,28 +18,16 @@ from typing import (
 )
 
 config = read_config('database.json')
-logger = logging.getLogger(__name__)
-# Create handlers
+logger = set_logger('database')
 
-c_handler = logging.StreamHandler()
-f_handler = logging.FileHandler(ROOT_DIR + '/log/database.log')
-c_handler.setLevel(logging.ERROR)
-f_handler.setLevel(logging.ERROR)
-# Create formatters and add it to handlers
-c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-f_format = logging.Formatter('%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s')
-
-c_handler.setFormatter(c_format)
-f_handler.setFormatter(f_format)
-# Add handlers to the logger
-logger.addHandler(c_handler)
-logger.addHandler(f_handler)
+expected_tables = set(config.pop("expected_tables"))
 
 
 class DataStore:
 
     def __init__(self):
         self.conn = psycopg2.connect(**config)
+        self.cursor = self.conn.cursor()
 
     @staticmethod
     def add_value(value):
@@ -48,8 +36,24 @@ class DataStore:
         else:
             return value
 
+    def check_existence(self):
+        sql = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
 
-    def select(self, table, keyvalues: [Dict[str, Any]], columns: Iterable[str]) -> List[Dict[str, Any]]:
+        with self.Cursor(self.conn) as cursor:
+            try:
+                cursor.execute(sql)
+                tables = cursor.fetchall()
+                tables = [table[0] for table in tables]
+                return (True, tables) if set(tables) == expected_tables else (False, tables)
+            except Exception as err:
+                print(err)
+                logger.info(f"{_getframe().f_code.co_name}: {err}")
+                return list()
+
+    def is_update(self):
+        ...
+
+    async def select(self, table, keyvalues: [Dict[str, Any]], columns: Iterable[str]) -> List[Dict[str, Any]]:
         if keyvalues:
             sql = "SELECT %s FROM %s WHERE %s;" % (
                 ", ".join(columns),
@@ -67,7 +71,25 @@ class DataStore:
 
         return res
 
-    def insert(self, table: str, values: Dict[str, Any]) -> bool:
+    async def select_one(self, table: str, keyvalues: Dict[str, Any], retcols: Iterable[str]):
+        select_sql = "SELECT %s FROM %s WHERE %s ;" % (
+            ", ".join(retcols),
+            table,
+            " AND ".join(f"{k} = {self.add_value(keyvalues[k])}" for k in keyvalues),
+        )
+        with self.Cursor(self.conn) as cursor:
+            cursor.execute(select_sql, list(keyvalues.values()))
+            row = cursor.fetchone()
+
+        if not row:
+            logger.warning(f"{_getframe().f_code.co_name} | No row found {(table,)})")
+            return {}
+        if cursor.rowcount > 1:
+            logger.error(f"{_getframe().f_code.co_name} | More than one row matched {(table,)})")
+            raise StoreError(500, "More than one row matched (%s)" % (table,))
+        return dict(zip(retcols, row))
+
+    async def insert(self, table: str, values: Dict[str, Any]) -> bool:
         keys, vals = zip(*values.items())
         sql = "INSERT INTO %s (%s) values (%s);" % (
             table,
@@ -76,21 +98,20 @@ class DataStore:
         )
         with self.Cursor(self.conn) as cursor:
             try:
-                logger.info(f"{_getframe().f_code.co_name}: {cursor=} |  {vals}")
-
+                logger.info(f"{_getframe().f_code.co_name}: Add new record {vals}")
                 cursor.execute(sql, vals)
                 return True
             except psycopg2.DatabaseError as err:
-                logger.error(f"{_getframe().f_code.co_name}: {cursor=} | {err}|  {vals}")
+                logger.error(f"{_getframe().f_code.co_name}:  {err}|  {vals}")
             except Exception as err:
                 logger.error(f"insert: {type(err)=} | {err=} |  {vals=}")
                 return False
         logger.info(f"{_getframe().f_code.co_name}: {cursor=} |  {vals}")
 
-    def delete(self, table: str, keyvalues: Dict[str, Any]) -> bool:
+    async def delete(self, table: str, keyvalues: Dict[str, Any]) -> bool:
         sql = "DELETE FROM %s WHERE %s" % (
             table,
-            " AND ".join(f"{k} = {self.add_value(keyvalues[k])}"  for k in keyvalues),
+            " AND ".join(f"{k} = {self.add_value(keyvalues[k])}" for k in keyvalues),
         )
         with self.Cursor(self.conn) as cursor:
             try:
@@ -103,7 +124,7 @@ class DataStore:
                 logger.error(f"{_getframe().f_code.co_name} | {err}")
                 return False
 
-    def update(self, table: str, keyvalues: Dict[str, Any], updatevalues: Dict[str, Any]) -> bool:
+    async def update(self, table: str, keyvalues: Dict[str, Any], updatevalues: Dict[str, Any]) -> bool:
 
         if keyvalues:
             sql = "UPDATE %s SET %s WHERE %s;" % (

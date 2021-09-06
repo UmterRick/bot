@@ -1,8 +1,8 @@
 {
   "passwords":
     {
-      "admin": 1111,
-      "trainer": 2222,
-      "logs": 3333
+      "admin": "1111",
+      "trainer": "2222",
+      "logs": "3333"
     }
 }

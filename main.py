@@ -1,39 +1,44 @@
-from configs import *
-from database import *
-from mams_site import *
-from new_keyboards import *
+import asyncio
+import logging
+from bot_front.new_keyboards import *
+from bot_front.messages_text import *
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
-from aiogram.dispatcher import Dispatcher
-from aiogram.dispatcher.webhook import SendMessage
 from aiogram.utils.executor import start_webhook
 from aiogram.dispatcher import FSMContext
-from aiogram import executor, Dispatcher, Bot
+from aiogram import Dispatcher, Bot
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
-from utils import create_callback_data, separate_callback_data
-#
+from utils import create_callback_data, separate_callback_data, read_config, set_logger
+from storage.db_utils import DataStore
+from user_utils import USER_TYPE, update_state
+from mams_site import get_content
+from sys import _getframe
+
+bot_config = read_config('bot.json')
+webhook_config = read_config('webhook.json')
 # bot = Bot(token=TOKEN)
 memory_storage = MemoryStorage()
-#dp = Dispatcher(bot, storage=memory_storage)
-#
+# dp = Dispatcher(bot, storage=memory_storage)
+
 HTML = get_html(C_URL)
 temp_course_text = {}
-# webhook settings
-WEBHOOK_HOST = 'http://localhost'
-WEBHOOK_PATH = ''
-WEBHOOK_URL = f"https://63be-188-163-51-23.ngrok.io"
 
-# webserver settings
-WEBAPP_HOST = 'localhost'  # or ip
-WEBAPP_PORT = 8080
+WEBHOOK_HOST = webhook_config.get("host", "")
+WEBHOOK_PATH = webhook_config.get("path", "")
+WEBHOOK_URL = webhook_config.get("url", "")
+
+WEBAPP_HOST = webhook_config.get("apphost", "")  # or ip
+WEBAPP_PORT = webhook_config.get("appport", -1)
 
 logging.basicConfig(level=logging.INFO)
 
-bot = Bot(token=TOKEN)
+bot = Bot(token=bot_config.get("TOKEN", ""))
 dp = Dispatcher(bot, storage=memory_storage)
 dp.middleware.setup(LoggingMiddleware())
 
+store = DataStore()
+logger = set_logger('main')
 
 
 class MainStates(StatesGroup):
@@ -63,9 +68,6 @@ class AdminStates(StatesGroup):
     add_note = State()
 
 
-
-
-
 async def StateName(state: FSMContext):
     cur_state = await state.get_state()
     return cur_state
@@ -74,133 +76,166 @@ async def StateName(state: FSMContext):
 @dp.message_handler(commands='start', state='*')  # STEP 1
 async def auth_user_type(message: types.Message, state: FSMContext):
     global CHAT_ID, coursesId, USER_TYPE
-    db_create_tables(DB_NAME)
-    get_topics(HTML, 'category')
+    # get_topics(HTML, 'category')
     coursesId = get_content(HTML)
     CHAT_ID = message.chat.id
-    users = db_read_users(DB_NAME)
-    registered = []
-    for user in users:
-        registered.append(int(user[1]))
+    chat = message.chat.id
+    curr_user = await store.select_one('users', {'telegram': chat}, ('name', 'type'))
 
-    print('redistered id = ', registered)
-    if str(message.chat.id).startswith('-'):
-        await bot.send_message(CHAT_ID, admin_groups_start)
-
-        USER_TYPE = 'Адміністратор📒'
-        await EnterStates.password_state.set()
-        cur_state = await state.get_state()
-
-        if message.from_user.last_name is not None:
-            user_name = ' '.join([str(message.chat.first_name), str(message.chat.last_name)])
-        else:
-            user_name = ' '.join([str(message.chat.first_name)])
-        nickname = message.chat.username
-        chat_info = [message.chat.id, user_name, nickname, str(cur_state)]
-        db_start_add_user(DB_NAME, chat_info)
-
-        db_save_var(DB_NAME, CHAT_ID, 'user_type', 'admin_group')
-    elif CHAT_ID in registered:
-        greeting_info = db_get_user_info(DB_NAME, CHAT_ID)
-        greeting_info = greeting_info[0]
-        print('greeting = ', greeting_info)
-        type_ = 'non_type'
-        name = 'no_name'
-        if greeting_info[2] == 'admin':
-            type_ = '<b>Адміністратор</b>'
-            name = greeting_info[0]
-        elif greeting_info[2] == 'client':
-            type_ = '<b>Учень</b>'
-            name = greeting_info[0]
-        elif greeting_info[2] == 'admin_group':
-            type_ = '<b>група Адміністраторів</b>'
-            name = ''
-        elif greeting_info[2] == 'trainer':
-            type_ = '<b>тренер</b>'
-            name = ''
-        await message.answer(f"Привіт ми вже знайомі, ви {type_} <i>{name}</i>"
-                             f" в нашому освітньому центрі \n <b> 📜 Головне Меню 📜 </b> ",
-                             parse_mode='HTML', reply_markup=MenuKB(CHAT_ID))
-        await MainStates.wait_menu_click.set()
-        user_state = await StateName(state)
-        db_upd_user_state(DB_NAME, CHAT_ID, user_state)
-    else:
+    logger.info(f"{_getframe().f_code.co_name} | Start on user: {curr_user} ([] = new user)")
+    if not curr_user or curr_user['type'] == 0:
+        if not curr_user:
+            user = {
+                'name': message.from_user.full_name,
+                'nickname': message.from_user.username,
+                'telegram': message.chat.id,
+                'contact': None,
+                'type': 0,
+                'state': pickle.dumps(EnterStates.login_state)
+            }
+            await store.insert('users', user)
+            logger.info(f"{_getframe().f_code.co_name} | New user added | {user}")
+        await bot.send_message(chat, start_text, reply_markup=UserTypeKB())
         await EnterStates.login_state.set()
-        user_state = await StateName(state)
-        db_upd_user_state(DB_NAME, CHAT_ID, user_state)
+        await update_state(message.chat.id, EnterStates.login_state, store)
 
-        # cur_state = await state.get_state()
-        # if message.from_user.last_name is not None:
-        #     user_name = ' '.join([str(message.from_user.first_name), str(message.from_user.last_name)])
-        # else:
-        #     user_name = ' '.join([str(message.from_user.first_name)])
-        # nickname = message.from_user.username
-        #
-        # user_info = [message.from_user.id, user_name, nickname, str(cur_state)]
-        # db_start_add_user(DB_NAME, user_info)
-
-        commands = [types.BotCommand(command="/start", description="Начало работы с ботом"), ]
-        await bot.set_my_commands(commands)
-
-        await bot.send_message(message.chat.id, start_text, 'HTML', reply_markup=UserTypeKB())
+    else:
+        await bot.send_message(chat, Registered_greeting(USER_TYPE.get(curr_user['type'], 0), curr_user['name']),
+                               'HTML',
+                               reply_markup=MenuKB(curr_user['type']))
+        logger.info(f"{_getframe().f_code.co_name} | Registered user {message.from_user.id} start Bot")
+    # users = db_read_users(DB_NAME)
+    # registered = []
+    # for user in users:
+    #     registered.append(int(user[1]))
+    #
+    # print('redistered id = ', registered)
+    # if str(message.chat.id).startswith('-'):
+    #     await bot.send_message(CHAT_ID, admin_groups_start)
+    #
+    #     USER_TYPE = 'Адміністратор📒'
+    #     await EnterStates.password_state.set()
+    #     cur_state = await state.get_state()
+    #
+    #     if message.from_user.last_name is not None:
+    #         user_name = ' '.join([str(message.chat.first_name), str(message.chat.last_name)])
+    #     else:
+    #         user_name = ' '.join([str(message.chat.first_name)])
+    #     nickname = message.chat.username
+    #     chat_info = [message.chat.id, user_name, nickname, str(cur_state)]
+    #     db_start_add_user(DB_NAME, chat_info)
+    #
+    #     db_save_var(DB_NAME, CHAT_ID, 'user_type', 'admin_group')
+    # elif CHAT_ID in registered:
+    #     greeting_info = db_get_user_info(DB_NAME, CHAT_ID)
+    #     greeting_info = greeting_info[0]
+    #     print('greeting = ', greeting_info)
+    #     type_ = 'non_type'
+    #     name = 'no_name'
+    #     if greeting_info[2] == 'admin':
+    #         type_ = '<b>Адміністратор</b>'
+    #         name = greeting_info[0]
+    #     elif greeting_info[2] == 'client':
+    #         type_ = '<b>Учень</b>'
+    #         name = greeting_info[0]
+    #     elif greeting_info[2] == 'admin_group':
+    #         type_ = '<b>група Адміністраторів</b>'
+    #         name = ''
+    #     elif greeting_info[2] == 'trainer':
+    #         type_ = '<b>тренер</b>'
+    #         name = ''
+    #     await message.answer(f"Привіт ми вже знайомі, ви {type_} <i>{name}</i>"
+    #                          f" в нашому освітньому центрі \n <b> 📜 Головне Меню 📜 </b> ",
+    #                          parse_mode='HTML', reply_markup=MenuKB(CHAT_ID))
+    #     await MainStates.wait_menu_click.set()
+    #     user_state = await StateName(state)
+    #     db_upd_user_state(DB_NAME, CHAT_ID, user_state)
+    # else:
+    #     await EnterStates.login_state.set()
+    #     user_state = await StateName(state)
+    #     db_upd_user_state(DB_NAME, CHAT_ID, user_state)
+    #
+    #     # cur_state = await state.get_state()
+    #     # if message.from_user.last_name is not None:
+    #     #     user_name = ' '.join([str(message.from_user.first_name), str(message.from_user.last_name)])
+    #     # else:
+    #     #     user_name = ' '.join([str(message.from_user.first_name)])
+    #     # nickname = message.from_user.username
+    #     #
+    #     # user_info = [message.from_user.id, user_name, nickname, str(cur_state)]
+    #     # db_start_add_user(DB_NAME, user_info)
+    #
+    #     # commands = [types.BotCommand(command="/start", description="Начало работы с ботом"), ]
+    #     # await bot.set_my_commands(commands)
+    #
+    #     await bot.send_message(message.chat.id, start_text, 'HTML', reply_markup=UserTypeKB())
 
 
 @dp.callback_query_handler(state=EnterStates.login_state)
 async def auth_step_two(call: types.CallbackQuery, state: FSMContext):
-    global USER_TYPE
     print('auth_step_two data = ', call.data)
-
-    USER_TYPE = call.data
+    try:
+        user_type = int(call.data)
+    except TypeError as err:
+        logger.error(f"{_getframe().f_code.co_name} | Incorrect User Type got : {call.data}, 1,2,3 was expected")
+        user_type = 3
     await state.update_data(userType=call.data, userID=call.from_user.id)
 
-    if USER_TYPE == 'Адміністратор📒':
+    if user_type == 1:
         await call.message.edit_text('Для входу як адміністратор потрібен пароль!\nВведіть пароль: ')
         await EnterStates.password_state.set()
+        await update_state(call.from_user.id, EnterStates.password_state, store)
+        await store.update('users', {'telegram': call.from_user.id}, {'temp_state_1': user_type})
 
-    elif USER_TYPE == 'Учень🤓':
-        await call.message.edit_text(f'Ви увійшли як {call.data}', reply_markup=MenuKB(call.from_user.id))
-        db_save_var(DB_NAME, call.from_user.id, 'user_type', 'client')
-
-        await MainStates.wait_menu_click.set()
-
-    elif USER_TYPE == 'Тренер📝':
-        await call.message.edit_text('Для входу як тренер потрібен пароль!\nВведіть пароль: ')
-        await EnterStates.password_state.set()
-    else:
-        await call.message.edit_text('Оберіть коректний тип користувача!')
-        return
-
-    cur_state = await state.get_state()
-    if call.from_user.last_name is not None:
-        user_name = ' '.join([str(call.from_user.first_name), str(call.from_user.last_name)])
-    else:
-        user_name = ' '.join([str(call.from_user.first_name)])
-    nickname = call.from_user.username
-
-    user_info = [call.from_user.id, user_name, nickname, str(cur_state)]
-    db_start_add_user(DB_NAME, user_info)
-
-    user_state = await StateName(state)
-    db_upd_user_state(DB_NAME, CHAT_ID, user_state)
+    # elif USER_TYPE == 'Учень🤓':
+    #     await call.message.edit_text(f'Ви увійшли як {call.data}', reply_markup=MenuKB(call.from_user.id))
+    #     db_save_var(DB_NAME, call.from_user.id, 'user_type', 'client')
+    #
+    #     await MainStates.wait_menu_click.set()
+    #
+    # elif USER_TYPE == 'Тренер📝':
+    #     await call.message.edit_text('Для входу як тренер потрібен пароль!\nВведіть пароль: ')
+    #     await EnterStates.password_state.set()
+    # else:
+    #     await call.message.edit_text('Оберіть коректний тип користувача!')
+    #     return
+    #
+    # cur_state = await state.get_state()
+    # if call.from_user.last_name is not None:
+    #     user_name = ' '.join([str(call.from_user.first_name), str(call.from_user.last_name)])
+    # else:
+    #     user_name = ' '.join([str(call.from_user.first_name)])
+    # nickname = call.from_user.username
+    #
+    # user_info = [call.from_user.id, user_name, nickname, str(cur_state)]
+    # db_start_add_user(DB_NAME, user_info)
+    #
+    # user_state = await StateName(state)
+    # db_upd_user_state(DB_NAME, CHAT_ID, user_state)
 
 
 @dp.message_handler(state=EnterStates.password_state)  # 2.3  PASSWORD VALID
 async def check_password(message: types.Message, state: FSMContext):
     print('check_password data = ', message.text)
-    global  USER_TYPE
-    user_info = db_get_user_info(DB_NAME, message.chat.id)
-
-    if message.text == ADMIN_PASSWORD and str(message.chat.id).startswith('-'):
-        await bot.send_message(CHAT_ID, f'Бот активований у групі адміністраторів')
-
-        await MainStates.wait_menu_click.set()
-    elif USER_TYPE == 'Адміністратор📒' and message.text == ADMIN_PASSWORD:
-        await bot.send_message(CHAT_ID, 'Ви увійшли як <b>Адміністратор</b>', parse_mode='HTML',
+    passwords = read_config('users_access.json')
+    passwords = passwords.get('passwords', {})
+    user = await store.select_one('users', {'telegram': message.chat.id}, ('temp_state_1',))
+    # user_info = db_get_user_info(DB_NAME, message.chat.id)
+    #
+    # if message.text == ADMIN_PASSWORD and str(message.chat.id).startswith('-'):
+    #     await bot.send_message(CHAT_ID, f'Бот активований у групі адміністраторів')
+    #
+    #     await MainStates.wait_menu_click.set()
+    print(passwords.get('admin', None))
+    print(message.text == passwords.get('admin', None), type(user['temp_state_1']))
+    if int(user['temp_state_1']) == 1 and message.text == passwords.get('admin', None):
+        await bot.send_message(message.chat.id, 'Ви увійшли як <b>Адміністратор</b>', parse_mode='HTML',
                                reply_markup=MenuKB(message.chat.id))
-        db_save_var(DB_NAME, message.chat.id, 'user_type', 'admin')
+        await store.update('users', {'telegram': message.chat.id}, {'type': 1})
         await MainStates.wait_menu_click.set()
-    elif USER_TYPE == 'Тренер📝' and message.text == TRAINER_PASSWORD:
-        await bot.send_message(CHAT_ID, 'Оберіть себе у списку', parse_mode='HTML', reply_markup=TrainersKB(DB_NAME))
+        await update_state(message.chat.id, MainStates.wait_menu_click, store)
+    elif (user['temp_state_1']) == 2 and message.text == passwords.get('trainer', None):
+        await bot.send_message(message.chat.id, 'Оберіть себе у списку', parse_mode='HTML', reply_markup=TrainersKB(store))
         db_save_var(DB_NAME, message.chat.id, 'user_type', 'trainer')
 
         await MainStates.choose_trainer.set()
@@ -575,9 +610,12 @@ async def client_answer_enroll_call(call: types.CallbackQuery, state: FSMContext
         to_admin_text += '❓' + 'Курс :' + str(enroll[0]) + '; \n\t▶️ Група' + str(enroll[1]) + '\n'
         keyboard = InlineKeyboardMarkup()
 
-        accept_btn = InlineKeyboardButton('Підтвердити✅', callback_data=create_callback_data(enroll_id, call.message.chat.id, 'accept') )
+        accept_btn = InlineKeyboardButton('Підтвердити✅',
+                                          callback_data=create_callback_data(enroll_id, call.message.chat.id, 'accept'))
 
-        cancel_btn = InlineKeyboardButton('Відхилити❌', callback_data=create_callback_data(enroll_id, call.message.chat.id, 'cancel_enroll'))
+        cancel_btn = InlineKeyboardButton('Відхилити❌',
+                                          callback_data=create_callback_data(enroll_id, call.message.chat.id,
+                                                                             'cancel_enroll'))
         keyboard.row(accept_btn, cancel_btn)
         print('to admin text = ', to_admin_text)
         try:
@@ -707,12 +745,12 @@ async def check_client_enroll(call: types.CallbackQuery, state: FSMContext):
         print('answer_enroll catch callback = ', call.data)
 
 
-@dp.callback_query_handler(lambda c: c.data in ['0', '1', 'again', 'done'], state='*')
+# @dp.callback_query_handler(lambda c: c.data in ['0', '1', 'again', 'done'], state='*')
 async def admin_add_flag(call: types.CallbackQuery, state: FSMContext):
     global CHAT_ID
     print('admin_add_flag data = ', call.data)
 
-    CHAT_ID = call.from_user.id
+    chat = call.from_user.id
     if call.data in ['0', '1']:
         await state.update_data(group_flag=call.data)
         days_keyboard = DaysKB()
@@ -930,27 +968,28 @@ async def job():
 
 @dp.message_handler(lambda m: '/start' not in m.text, state=None)
 async def check_state_for_user_message(message: types.Message, state: FSMContext):
-    global CHAT_ID
-    needed_state = db_get_user_state(DB_NAME, message.chat.id)
-    await state.set_state(needed_state)
-    CHAT_ID = message.chat.id
+    user = await store.select_one('users', {'telegram': message.from_user.id}, ('state',))
+    await state.set_state(user['state'])
     now_state = await state.get_state()
-    print('catched message = ', message.text)
-    print('need', needed_state)
-    print('have', now_state)
+    logger.info(f"Got msg: {message.text} in state {now_state} changed to {user['state']}")
 
 
 @dp.callback_query_handler(state=None)
 async def check_state_for_user_callback(call: types.CallbackQuery, state: FSMContext):
-    global CHAT_ID
-    needed_state = db_get_user_state(DB_NAME, call.message.chat.id)
+    user = await store.select_one('users', {'telegram': call.from_user.id}, ('state',))
+    await state.set_state(user['state'])
     now_state = await state.get_state()
-    print('have', now_state)
-    CHAT_ID = call.message.chat.id
-    now_state = await state.get_state()
-    print('needed_state = ', needed_state)
-    await state.set_state(needed_state)
-    print('catched callback = ', call.data)
+    logger.info(f"Got msg: {call.data} in state {now_state} changed to {user['state']}")
+
+    # global CHAT_ID
+    # needed_state = db_get_user_state(DB_NAME, call.message.chat.id)
+    # now_state = await state.get_state()
+    # print('have', now_state)
+    # CHAT_ID = call.message.chat.id
+    # now_state = await state.get_state()
+    # print('needed_state = ', needed_state)
+    # await state.set_state(needed_state)
+    # print('catched callback = ', call.data)
 
 
 def repeat(coro, loop):
@@ -977,15 +1016,28 @@ async def on_shutdown(dp):
 
     logging.warning('Bye!')
 
+
 if __name__ == "__main__":
+    database_config = read_config('database.json')
+    logger.info(f"===== STARTUP BOT =====")
+    existing_tables = store.check_existence()
+    if not existing_tables[0]:
+        logger.error(
+            f"{_getframe().f_code.co_name}: Expected tables doesnt match: {existing_tables[1]} from {database_config.get('expected_tables')} ")
+        exit()
+
+    commands = [types.BotCommand(command="/start", description="Начало работы с ботом"), ]
+
     loop = asyncio.get_event_loop()
-    loop.call_later(DELAY, repeat, job, loop)
-    start_webhook(
-        dispatcher=dp,
-        webhook_path=WEBHOOK_PATH,
-        on_startup=on_startup,
-        on_shutdown=on_shutdown,
-        skip_updates=True,
-        host=WEBAPP_HOST,
-        port=WEBAPP_PORT,
-    )
+    # loop.call_later(10, repeat, job, loop)
+    # loop.run_until_complete(bot.set_my_commands(commands))
+    loop.run_until_complete(get_content(store))
+    # start_webhook(
+    #     dispatcher=dp,
+    #     webhook_path=WEBHOOK_PATH,
+    #     on_startup=on_startup,
+    #     on_shutdown=on_shutdown,
+    #     skip_updates=True,
+    #     host=WEBAPP_HOST,
+    #     port=WEBAPP_PORT,
+    # )

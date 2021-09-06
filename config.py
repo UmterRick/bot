@@ -9,14 +9,14 @@ from datetime import datetime, timedelta
 
 
 
-TOKEN = '1485443475:AAEv-Xl15Xp9Z6sSFyH4tizumu4oeJ3ZtdY'
-ADMIN_PASSWORD = '1111'
-TRAINER_PASSWORD = '2222'
-LOG_PASSWORD = '3333'
-
-HEADERS = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:85.0) Gecko/20100101 Firefox/85.0'}
-URL = 'https://meandmyschool.org.ua/ru/'
-C_URL = 'https://meandmyschool.org.ua/detalnishe-pro-prohramy/'
+# TOKEN = '1485443475:AAEv-Xl15Xp9Z6sSFyH4tizumu4oeJ3ZtdY'
+# ADMIN_PASSWORD = '1111'
+# TRAINER_PASSWORD = '2222'
+# LOG_PASSWORD = '3333'
+#
+# HEADERS = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:85.0) Gecko/20100101 Firefox/85.0'}
+# URL = 'https://meandmyschool.org.ua/ru/'
+# C_URL = 'https://meandmyschool.org.ua/detalnishe-pro-prohramy/'
 
 DB_NAME = 'test1'
 
@@ -25,19 +25,18 @@ port = '3306'
 db_user = 'root'
 db_passwd = 'root'
 
-#djsncsdm
 
 DELAY = 10
 DELAY_2 = 30
 
-# webhook settings
-WEBHOOK_HOST = 'https://your.domain'
-WEBHOOK_PATH = ''
-WEBHOOK_URL = 'https://6170de51ab69.ngrok.io'.strip()
-
-# webserver settings
-WEBAPP_HOST = 'localhost'  # or ip
-WEBAPP_PORT = 8080
+# # webhook settings
+# WEBHOOK_HOST = 'https://your.domain'
+# WEBHOOK_PATH = ''
+# WEBHOOK_URL = 'https://6170de51ab69.ngrok.io'.strip()
+#
+# # webserver settings
+# WEBAPP_HOST = 'localhost'  # or ip
+# WEBAPP_PORT = 8080
 
 weekdays = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС']
 eng_weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
