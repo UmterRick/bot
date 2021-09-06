@@ -1,0 +1,15 @@
+{
+  "database": {
+    "file": "database.log",
+    "level": "DEBUG"
+  },
+  "main": {
+    "file": "main.log",
+    "level": "DEBUG"
+  },
+  "parser": {
+    "file": "parser.log",
+    "level": "DEBUG"
+  }
+
+}

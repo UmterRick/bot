@@ -17,3 +17,6 @@ soupsieve==2.2.1
 typing-extensions==3.10.0.1
 urllib3==1.26.6
 yarl==1.6.3
+
+Flask~=2.0.1
+SQLAlchemy~=1.4.23

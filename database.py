@@ -6,6 +6,11 @@ import requests
 from bs4 import BeautifulSoup
 
 from configs import *
+from utils import read_config
+
+config = read_config('urls.json')
+HEADERS = config.get("HEADERS", "")
+C_URL = config.get("C_URL", "")
 
 
 def get_html(url, params=None):

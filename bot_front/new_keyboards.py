@@ -18,19 +18,18 @@ def ChatTypeKB():
 
 def UserTypeKB():
     keyboard = types.InlineKeyboardMarkup()
-    already_user = InlineKeyboardButton('Учень🤓', callback_data='Учень🤓')
-    trainer_user = InlineKeyboardButton('Тренер📝', callback_data='Тренер📝')
-    admin_user = InlineKeyboardButton('Адміністратор📒', callback_data='Адміністратор📒')
+    already_user = InlineKeyboardButton('Учень🤓', callback_data='3')
+    trainer_user = InlineKeyboardButton('Тренер📝', callback_data='2')
+    admin_user = InlineKeyboardButton('Адміністратор📒', callback_data='1')
     keyboard.row(already_user)
     keyboard.row(trainer_user, admin_user)
 
     return keyboard
 
 
-def MenuKB(telegram_id):
-    user = User.read(User(), telegram_id)
+def MenuKB(user_type):
     keyboard = InlineKeyboardMarkup(row_width=1)
-    my_crs_callback = 'my_course' if user['type'] == 'client' else 'trainer_course'
+    my_crs_callback = 'my_course' if user_type == 3 else 'trainer_course'
 
     my_courses_btn = InlineKeyboardButton('Мої курси', callback_data=my_crs_callback)
     all_courses_btn = InlineKeyboardButton('Всі курси', callback_data='all_courses')
@@ -39,13 +38,13 @@ def MenuKB(telegram_id):
     groups_btn = InlineKeyboardButton('Перелік усіх груп', callback_data='all_groups')
     back_btn = InlineKeyboardButton('⬅️ Назад', callback_data='turn_back')
 
-    if user['type'] == 'trainer':
+    if user_type == 2:
         keyboard.row(my_courses_btn)
 
-    elif user['type'] == 'admin':
+    elif user_type == 1:
         keyboard.row(all_courses_btn)
-        keyboard.row(guests_btn)
-        keyboard.row(groups_btn)
+        # keyboard.row(guests_btn)
+        # keyboard.row(groups_btn)
     else:
         keyboard.row(my_courses_btn)
         keyboard.row(all_courses_btn)
@@ -55,8 +54,10 @@ def MenuKB(telegram_id):
     return keyboard
 
 
-def TrainersKB():
+def TrainersKB(store):
     keyboard = InlineKeyboardMarkup()
+    trainers = store.select('courses', None, columns=('trainer',))
+    print(trainers)
     trainers = DataBase.get_trainers(DataBase())
     for trainer in trainers:
         callback = list()
