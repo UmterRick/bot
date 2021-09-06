@@ -15704,3 +15704,145 @@ DETAIL:  Failing row contains (null, Мистецтво).
 2021-09-06 15:20:29,746 - database - insert - INFO - insert: Add new record ('Мистецтво',)
 2021-09-06 15:20:29,747 - database - insert - INFO - insert: Add new record ('Основи джазової та естрадної імпровізації: особливості виконання фортепіанних джазових творів ', 9, '{"trainer": ["В. Алтухов", " І. Алтухова"]}', 'https://meandmyschool.org.ua/wp-content/uploads/2021/08/37_prohrama_osnovy_dzhazovoi_ta_estradnoi_improvizatsii_v_altukhov.pdf', '-', 0)
 2021-09-06 15:20:29,747 - database - insert - INFO - insert: Add new record ('Основи джазової та естрадної імпровізації: особливості виконання фортепіанних джазових творів ', 9, '{"trainer": ["В. Алтухов", " І. Алтухова"]}', 'https://meandmyschool.org.ua/wp-content/uploads/2021/08/37_prohrama_osnovy_dzhazovoi_ta_estradnoi_improvizatsii_v_altukhov.pdf', '-', 0)
+2021-09-06 17:56:49,877 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:56:49,877 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:56:49,878 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, "<State 'EnterStates:login_state'>")
+2021-09-06 17:56:49,878 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, "<State 'EnterStates:login_state'>")
+2021-09-06 17:56:49,879 - database - insert - ERROR - insert:  insert or update on table "users" violates foreign key constraint "users_fk0"
+DETAIL:  Key (id)=(1) is not present in table "groups".
+|  ('Vlad Usichenko', 'umterrik', 396247215, None, 0, "<State 'EnterStates:login_state'>")
+2021-09-06 17:56:49,879 - database - insert - ERROR - insert:  insert or update on table "users" violates foreign key constraint "users_fk0"
+DETAIL:  Key (id)=(1) is not present in table "groups".
+|  ('Vlad Usichenko', 'umterrik', 396247215, None, 0, "<State 'EnterStates:login_state'>")
+2021-09-06 17:56:49,880 - database - insert - INFO - insert: cursor=<cursor object at 0x7fdc451f96d0; closed: -1> |  ('Vlad Usichenko', 'umterrik', 396247215, None, 0, "<State 'EnterStates:login_state'>")
+2021-09-06 17:56:49,880 - database - insert - INFO - insert: cursor=<cursor object at 0x7fdc451f96d0; closed: -1> |  ('Vlad Usichenko', 'umterrik', 396247215, None, 0, "<State 'EnterStates:login_state'>")
+2021-09-06 17:56:50,489 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 17:56:50,489 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 17:56:55,313 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 17:56:55,313 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 17:56:55,315 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 17:56:55,315 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 17:56:57,859 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:56:57,859 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:56:59,305 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:56:59,305 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:57:01,962 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:57:01,962 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:57:06,671 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:57:06,671 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:57:15,376 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:57:15,376 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:57:32,176 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:57:32,176 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:57:57,154 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:57:57,154 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 17:57:57,154 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, "<State 'EnterStates:login_state'>")
+2021-09-06 17:57:57,154 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, "<State 'EnterStates:login_state'>")
+2021-09-06 17:57:57,156 - database - insert - ERROR - insert:  insert or update on table "users" violates foreign key constraint "users_fk0"
+DETAIL:  Key (id)=(2) is not present in table "groups".
+|  ('Vlad Usichenko', 'umterrik', 396247215, None, 0, "<State 'EnterStates:login_state'>")
+2021-09-06 17:57:57,156 - database - insert - ERROR - insert:  insert or update on table "users" violates foreign key constraint "users_fk0"
+DETAIL:  Key (id)=(2) is not present in table "groups".
+|  ('Vlad Usichenko', 'umterrik', 396247215, None, 0, "<State 'EnterStates:login_state'>")
+2021-09-06 17:57:57,157 - database - insert - INFO - insert: cursor=<cursor object at 0x7f78017d66d0; closed: -1> |  ('Vlad Usichenko', 'umterrik', 396247215, None, 0, "<State 'EnterStates:login_state'>")
+2021-09-06 17:57:57,157 - database - insert - INFO - insert: cursor=<cursor object at 0x7f78017d66d0; closed: -1> |  ('Vlad Usichenko', 'umterrik', 396247215, None, 0, "<State 'EnterStates:login_state'>")
+2021-09-06 17:57:57,765 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 17:57:57,765 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:01:16,217 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 18:01:16,217 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 18:01:16,218 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, 'EnterStates:login_state')
+2021-09-06 18:01:16,218 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, 'EnterStates:login_state')
+2021-09-06 18:01:16,835 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:01:16,835 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:01:35,983 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:01:35,983 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:01:35,991 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:01:35,991 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:01:39,057 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:01:39,057 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:01:39,065 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:01:39,065 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:02:10,491 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 18:02:10,491 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 18:02:10,492 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, 'EnterStates:login_state')
+2021-09-06 18:02:10,492 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, 'EnterStates:login_state')
+2021-09-06 18:02:11,005 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:02:11,005 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:02:17,962 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:02:17,962 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:02:23,386 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:02:23,386 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:03:19,193 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:03:19,193 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:03:19,201 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:03:19,201 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:03:35,376 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:03:35,376 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:03:35,381 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:03:35,381 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:16:17,025 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 18:16:17,025 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 18:16:17,026 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, 'EnterStates:login_state')
+2021-09-06 18:16:17,026 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, 'EnterStates:login_state')
+2021-09-06 18:16:17,428 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:16:17,428 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:18:48,751 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:18:48,751 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:18:51,829 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:18:51,829 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:18:51,837 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:18:51,837 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:19:01,264 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:19:01,264 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:19:02,714 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:19:02,714 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:19:06,182 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:19:06,182 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:19:11,516 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:19:11,516 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:19:20,836 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:19:20,836 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:19:38,561 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:19:38,561 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:20:13,605 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:20:13,605 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:21:16,728 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:21:16,728 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:22:19,105 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:22:19,105 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:23:22,135 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:23:22,135 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:24:25,346 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:24:25,346 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:25:28,214 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:25:28,214 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:26:31,318 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:26:31,318 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:27:34,209 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:27:34,209 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:28:37,133 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:28:37,133 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:29:40,179 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:29:40,179 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:34:01,370 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 18:34:01,370 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 18:34:01,370 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, 'EnterStates:login_state')
+2021-09-06 18:34:01,370 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, 'EnterStates:login_state')
+2021-09-06 18:34:01,774 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:34:01,774 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:34:05,464 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:34:05,464 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:34:05,469 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:34:05,469 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:34:08,046 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:34:08,046 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:34:08,049 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:34:08,049 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:34:09,987 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 18:34:09,987 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 19:45:38,092 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 19:45:38,092 - database - select_one - WARNING - select_one | No row found ('users',))
+2021-09-06 19:45:38,092 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, 'EnterStates:login_state')
+2021-09-06 19:45:38,092 - database - insert - INFO - insert: Add new record ('Vlad Usichenko', 'umterrik', 396247215, None, 0, 'EnterStates:login_state')
+2021-09-06 19:45:38,224 - database - update - WARNING - update | Nothing suitable for the conditions 
+2021-09-06 19:45:38,224 - database - update - WARNING - update | Nothing suitable for the conditions 

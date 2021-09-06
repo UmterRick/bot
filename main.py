@@ -91,7 +91,7 @@ async def auth_user_type(message: types.Message, state: FSMContext):
                 'telegram': message.chat.id,
                 'contact': None,
                 'type': 0,
-                'state': pickle.dumps(EnterStates.login_state)
+                'state': str(EnterStates.login_state.state)
             }
             await store.insert('users', user)
             logger.info(f"{_getframe().f_code.co_name} | New user added | {user}")
@@ -181,11 +181,17 @@ async def auth_step_two(call: types.CallbackQuery, state: FSMContext):
         user_type = 3
     await state.update_data(userType=call.data, userID=call.from_user.id)
 
-    if user_type == 1:
-        await call.message.edit_text('Для входу як адміністратор потрібен пароль!\nВведіть пароль: ')
+    if user_type in (1, 2):
+        await call.message.edit_text(password_request)
         await EnterStates.password_state.set()
         await update_state(call.from_user.id, EnterStates.password_state, store)
         await store.update('users', {'telegram': call.from_user.id}, {'temp_state_1': user_type})
+    elif user_type == 3:
+        await call.message.edit_text(f"f'Ви увійшли як Учень🤓", reply_markup=MenuKB(3))
+        await store.update('users', {'telegram': call.from_user.id}, {'temp_state_1': user_type})
+        await MainStates.wait_menu_click.set()
+        await update_state(call.from_user.id, MainStates.wait_menu_click, store)
+
 
     # elif USER_TYPE == 'Учень🤓':
     #     await call.message.edit_text(f'Ви увійшли як {call.data}', reply_markup=MenuKB(call.from_user.id))
@@ -226,19 +232,18 @@ async def check_password(message: types.Message, state: FSMContext):
     #     await bot.send_message(CHAT_ID, f'Бот активований у групі адміністраторів')
     #
     #     await MainStates.wait_menu_click.set()
-    print(passwords.get('admin', None))
-    print(message.text == passwords.get('admin', None), type(user['temp_state_1']))
     if int(user['temp_state_1']) == 1 and message.text == passwords.get('admin', None):
         await bot.send_message(message.chat.id, 'Ви увійшли як <b>Адміністратор</b>', parse_mode='HTML',
                                reply_markup=MenuKB(message.chat.id))
         await store.update('users', {'telegram': message.chat.id}, {'type': 1})
         await MainStates.wait_menu_click.set()
         await update_state(message.chat.id, MainStates.wait_menu_click, store)
-    elif (user['temp_state_1']) == 2 and message.text == passwords.get('trainer', None):
-        await bot.send_message(message.chat.id, 'Оберіть себе у списку', parse_mode='HTML', reply_markup=TrainersKB(store))
-        db_save_var(DB_NAME, message.chat.id, 'user_type', 'trainer')
-
+    elif int(user['temp_state_1']) == 2 and message.text == passwords.get('trainer', None):
+        await bot.send_message(message.chat.id, 'Оберіть себе у списку', parse_mode='HTML',
+                               reply_markup=await TrainersKB(store))
+        await store.update('users', {'telegram': message.chat.id}, {'type': 2})
         await MainStates.choose_trainer.set()
+        await update_state(message.chat.id, MainStates.choose_trainer, store)
 
     else:
         if str(message.chat.id).startswith('-'):
@@ -246,37 +251,40 @@ async def check_password(message: types.Message, state: FSMContext):
         else:
             await message.answer('Невірний пароль, спробуйте ще раз!')
         return
-    user_state = await StateName(state)
-    db_upd_user_state(DB_NAME, message.chat.id, user_state)
+    # user_state = await StateName(state)
+    # db_upd_user_state(DB_NAME, message.chat.id, user_state)
 
 
 @dp.callback_query_handler(state=MainStates.choose_trainer)
 async def trainer_name_clicked(call: types.CallbackQuery, state: FSMContext):
     print('trainer_name_clicked data = ', call.data)  # ([],[()])
-
+    user_type = 2
     if call.data == 'turn_back':
         await call.message.edit_text(start_text, 'HTML', reply_markup=UserTypeKB())
         await EnterStates.login_state.set()
+        await update_state(call.from_user.id, EnterStates.login_state, store)
     else:
-        db_save_var(DB_NAME, call.from_user.id, 'group_id', call.data)
-        await call.message.edit_text('<b> 📜 Головне Меню 📜 </b> ', parse_mode='HTML', reply_markup=MenuKB(CHAT_ID))
+        # db_save_var(DB_NAME, call.from_user.id, 'group_id', call.data)
+        await store.update('users', {'telegram': call.from_user.id}, {'name': call.data})
+
+        await call.message.edit_text('<b> 📜 Головне Меню 📜 </b> ', parse_mode='HTML', reply_markup=MenuKB(2))
         await MainStates.wait_menu_click.set()
-    user_state = await StateName(state)
-    db_upd_user_state(DB_NAME, CHAT_ID, user_state)
+    # user_state = await StateName(state)
+    # db_upd_user_state(DB_NAME, CHAT_ID, user_state)
 
 
 @dp.callback_query_handler(state=MainStates.wait_menu_click)
 async def menu_btn_clicked(call: types.CallbackQuery, state: FSMContext):
-    global CHAT_ID
     print('menu_btn_clicked data = ', call.data)
 
-    CHAT_ID = call.from_user.id
+    chat_id = call.from_user.id
 
     if call.data == 'all_courses':
-        await call.message.edit_text('Оберіть категорію курсів:', reply_markup=TopicKB())
+        await call.message.edit_text('Оберіть категорію курсів:', reply_markup=await TopicKB(store))
         await MainStates.wait_for_category.set()
-        user_state = await StateName(state)
-        db_upd_user_state(DB_NAME, CHAT_ID, user_state)
+        await update_state(chat_id, MainStates.wait_for_category, store)
+        # user_state = await StateName(state)
+        # db_upd_user_state(DB_NAME, CHAT_ID, user_state)
 
     if call.data == 'my_course' or call.data == 'trainer_course':
         await call.message.edit_text('Ваші курси:', reply_markup=MyCoursesKB(DB_NAME, call.from_user.id))
@@ -1030,14 +1038,14 @@ if __name__ == "__main__":
 
     loop = asyncio.get_event_loop()
     # loop.call_later(10, repeat, job, loop)
-    # loop.run_until_complete(bot.set_my_commands(commands))
-    loop.run_until_complete(get_content(store))
-    # start_webhook(
-    #     dispatcher=dp,
-    #     webhook_path=WEBHOOK_PATH,
-    #     on_startup=on_startup,
-    #     on_shutdown=on_shutdown,
-    #     skip_updates=True,
-    #     host=WEBAPP_HOST,
-    #     port=WEBAPP_PORT,
-    # )
+    loop.run_until_complete(bot.set_my_commands(commands))
+    # loop.run_until_complete(get_content(store))
+    start_webhook(
+        dispatcher=dp,
+        webhook_path=WEBHOOK_PATH,
+        on_startup=on_startup,
+        on_shutdown=on_shutdown,
+        skip_updates=True,
+        host=WEBAPP_HOST,
+        port=WEBAPP_PORT,
+    )
