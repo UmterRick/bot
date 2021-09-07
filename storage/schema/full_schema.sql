@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS courses (
 
 CREATE TABLE IF NOT EXISTS groups (
 	"id" SERIAL NOT NULL UNIQUE ,
+	"stream" INTEGER NOT NULL,
 	"day" TEXT NOT NULL,
 	"time" time NOT NULL ,
 	"type" BOOLEAN NOT NULL,
@@ -45,7 +46,7 @@ CREATE TABLE IF NOT EXISTS users (
 	"contact" varchar(40),
 	"type" integer NOT NULL,
 	"state" TEXT NOT NULL,
-	"at_category" varchar(255) ,
+	"at_category" INTEGER ,
 	"temp_state_1" varchar(255) ,
 	"temp_state_2" varchar(255),
 	CONSTRAINT "users_pk" PRIMARY KEY ("id")
