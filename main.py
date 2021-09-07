@@ -68,18 +68,9 @@ class AdminStates(StatesGroup):
     add_note = State()
 
 
-async def StateName(state: FSMContext):
-    cur_state = await state.get_state()
-    return cur_state
-
-
-@dp.message_handler(commands='start', state='*')  # STEP 1
-async def auth_user_type(message: types.Message, state: FSMContext):
-    global CHAT_ID, coursesId, USER_TYPE
-    # get_topics(HTML, 'category')
-    # coursesId = get_content(HTML)
-    # CHAT_ID = message.chat.id
-    chat = message.chat.id
+@dp.message_handler(commands='start', state='*')
+async def auth_user_type(message: types.Message):
+    chat = message.from_user.id
     curr_user = await store.select_one('users', {'telegram': chat}, ('name', 'type'))
 
     logger.info(f"{_getframe().f_code.co_name} | Start on user: {curr_user} ([] = new user)")
@@ -104,84 +95,19 @@ async def auth_user_type(message: types.Message, state: FSMContext):
                                'HTML',
                                reply_markup=MenuKB(curr_user['type']))
         logger.info(f"{_getframe().f_code.co_name} | Registered user {message.from_user.id} start Bot")
-    # users = db_read_users(DB_NAME)
-    # registered = []
-    # for user in users:
-    #     registered.append(int(user[1]))
-    #
-    # print('redistered id = ', registered)
-    # if str(message.chat.id).startswith('-'):
-    #     await bot.send_message(CHAT_ID, admin_groups_start)
-    #
-    #     USER_TYPE = 'Адміністратор📒'
-    #     await EnterStates.password_state.set()
-    #     cur_state = await state.get_state()
-    #
-    #     if message.from_user.last_name is not None:
-    #         user_name = ' '.join([str(message.chat.first_name), str(message.chat.last_name)])
-    #     else:
-    #         user_name = ' '.join([str(message.chat.first_name)])
-    #     nickname = message.chat.username
-    #     chat_info = [message.chat.id, user_name, nickname, str(cur_state)]
-    #     db_start_add_user(DB_NAME, chat_info)
-    #
-    #     db_save_var(DB_NAME, CHAT_ID, 'user_type', 'admin_group')
-    # elif CHAT_ID in registered:
-    #     greeting_info = db_get_user_info(DB_NAME, CHAT_ID)
-    #     greeting_info = greeting_info[0]
-    #     print('greeting = ', greeting_info)
-    #     type_ = 'non_type'
-    #     name = 'no_name'
-    #     if greeting_info[2] == 'admin':
-    #         type_ = '<b>Адміністратор</b>'
-    #         name = greeting_info[0]
-    #     elif greeting_info[2] == 'client':
-    #         type_ = '<b>Учень</b>'
-    #         name = greeting_info[0]
-    #     elif greeting_info[2] == 'admin_group':
-    #         type_ = '<b>група Адміністраторів</b>'
-    #         name = ''
-    #     elif greeting_info[2] == 'trainer':
-    #         type_ = '<b>тренер</b>'
-    #         name = ''
-    #     await message.answer(f"Привіт ми вже знайомі, ви {type_} <i>{name}</i>"
-    #                          f" в нашому освітньому центрі \n <b> 📜 Головне Меню 📜 </b> ",
-    #                          parse_mode='HTML', reply_markup=MenuKB(CHAT_ID))
-    #     await MainStates.wait_menu_click.set()
-    #     user_state = await StateName(state)
-    #     db_upd_user_state(DB_NAME, CHAT_ID, user_state)
-    # else:
-    #     await EnterStates.login_state.set()
-    #     user_state = await StateName(state)
-    #     db_upd_user_state(DB_NAME, CHAT_ID, user_state)
-    #
-    #     # cur_state = await state.get_state()
-    #     # if message.from_user.last_name is not None:
-    #     #     user_name = ' '.join([str(message.from_user.first_name), str(message.from_user.last_name)])
-    #     # else:
-    #     #     user_name = ' '.join([str(message.from_user.first_name)])
-    #     # nickname = message.from_user.username
-    #     #
-    #     # user_info = [message.from_user.id, user_name, nickname, str(cur_state)]
-    #     # db_start_add_user(DB_NAME, user_info)
-    #
-    #     # commands = [types.BotCommand(command="/start", description="Начало работы с ботом"), ]
-    #     # await bot.set_my_commands(commands)
-    #
-    #     await bot.send_message(message.chat.id, start_text, 'HTML', reply_markup=UserTypeKB())
 
 
 @dp.callback_query_handler(state=EnterStates.login_state)
-async def auth_step_two(call: types.CallbackQuery, state: FSMContext):
+async def auth_step_two(call: types.CallbackQuery):
     print('auth_step_two data = ', call.data)
     if call.data == 'turn_back':
         pass
     try:
         user_type = int(call.data)
     except ValueError as err:
-        logger.error(f"{_getframe().f_code.co_name} | Incorrect User Type got : {call.data}, 1,2,3 was expected")
+        logger.error(f"{_getframe().f_code.co_name} | Incorrect User Type got : "
+                     f"{call.data}, 1,2,3 was expected ({err})")
         user_type = 3
-    await state.update_data(userType=call.data, userID=call.from_user.id)
 
     if user_type in (1, 2):
         pass_msg = await call.message.edit_text(password_request, reply_markup=await BackBtn())
@@ -196,34 +122,9 @@ async def auth_step_two(call: types.CallbackQuery, state: FSMContext):
         await MainStates.wait_menu_click.set()
         await update_state(call.from_user.id, MainStates.wait_menu_click, store)
 
-    # elif USER_TYPE == 'Учень🤓':
-    #     await call.message.edit_text(f'Ви увійшли як {call.data}', reply_markup=MenuKB(call.from_user.id))
-    #     db_save_var(DB_NAME, call.from_user.id, 'user_type', 'client')
-    #
-    #     await MainStates.wait_menu_click.set()
-    #
-    # elif USER_TYPE == 'Тренер📝':
-    #     await call.message.edit_text('Для входу як тренер потрібен пароль!\nВведіть пароль: ')
-    #     await EnterStates.password_state.set()
-    # else:
-    #     await call.message.edit_text('Оберіть коректний тип користувача!')
-    #     return
-    #
-    # cur_state = await state.get_state()
-    # if call.from_user.last_name is not None:
-    #     user_name = ' '.join([str(call.from_user.first_name), str(call.from_user.last_name)])
-    # else:
-    #     user_name = ' '.join([str(call.from_user.first_name)])
-    # nickname = call.from_user.username
-    #
-    # user_info = [call.from_user.id, user_name, nickname, str(cur_state)]
-    # db_start_add_user(DB_NAME, user_info)
-    #
-    # user_state = await StateName(state)
-    # db_upd_user_state(DB_NAME, CHAT_ID, user_state)
 
 @dp.callback_query_handler(state=EnterStates.password_state)
-async def from_password(call: types.CallbackQuery, state: FSMContext):
+async def from_password(call: types.CallbackQuery):
     if call.data == 'turn_back':
         await EnterStates.login_state.set()
         await update_state(call.from_user.id, EnterStates.login_state, store)
@@ -231,17 +132,12 @@ async def from_password(call: types.CallbackQuery, state: FSMContext):
 
 
 @dp.message_handler(state=EnterStates.password_state)  # 2.3  PASSWORD VALID
-async def check_password(message: types.Message, state: FSMContext):
+async def check_password(message: types.Message):
     print('check_password data = ', message.text)
     passwords = read_config('users_access.json')
     passwords = passwords.get('passwords', {})
     user = await store.select_one('users', {'telegram': message.chat.id}, ('temp_state_1',))
-    # user_info = db_get_user_info(DB_NAME, message.chat.id)
-    #
-    # if message.text == ADMIN_PASSWORD and str(message.chat.id).startswith('-'):
-    #     await bot.send_message(CHAT_ID, f'Бот активований у групі адміністраторів')
-    #
-    #     await MainStates.wait_menu_click.set()
+
     to_delete = await store.select_one('users', {'telegram': message.from_user.id}, ('temp_state_2',))
 
     if int(user['temp_state_1']) == 1 and message.text == passwords.get('admin', None):
@@ -266,19 +162,15 @@ async def check_password(message: types.Message, state: FSMContext):
         try:
             await bot.delete_message(message.from_user.id, to_delete['temp_state_2'])
         except Exception as ex:
-            logger.error('Cannot delete password request message')
-        pass_msg = await bot.send_message(message.from_user.id, 'Невірний пароль, спробуйте ще раз!', reply_markup=await BackBtn())
+            logger.error(f'Cannot delete password request message | {ex}')
+        pass_msg = await bot.send_message(message.from_user.id, 'Невірний пароль, спробуйте ще раз!',
+                                          reply_markup=await BackBtn())
         await store.update('users', {'telegram': message.from_user.id}, {'temp_state_2': pass_msg.message_id})
 
 
-    # user_state = await StateName(state)
-    # db_upd_user_state(DB_NAME, message.chat.id, user_state)
-
-
 @dp.callback_query_handler(state=MainStates.choose_trainer)
-async def trainer_name_clicked(call: types.CallbackQuery, state: FSMContext):
+async def trainer_name_clicked(call: types.CallbackQuery):
     print('trainer_name_clicked data = ', call.data)  # ([],[()])
-    user_type = 2
     if call.data == 'turn_back':
         await call.message.edit_text(start_text, 'HTML', reply_markup=UserTypeKB())
         await EnterStates.login_state.set()
@@ -402,20 +294,14 @@ async def send_courses(call: types.CallbackQuery, state: FSMContext):
         courses_msgs.append(new_msg.message_id)
         await store.update('users', {'telegram': chat_id},
                            {'temp_state_1': json.dumps({"courses": courses_msgs})})
-        # await CoursesKB(call, category, state, temp_course_text)
         await MainStates.wait_for_course.set()
         await update_state(chat_id, MainStates.wait_for_course, store)
-        # user_state = await StateName(state)
-        # db_upd_user_state(DB_NAME, CHAT_ID, user_state)
 
 
 @dp.callback_query_handler(state=MainStates.wait_for_course)
-async def catch_group(call: types.CallbackQuery, state: FSMContext):
-    global CHAT_ID, msgID, USER_TYPE
+async def catch_group(call: types.CallbackQuery):
     print('catch_group data = ', call.data)
     chat_id = call.from_user.id
-    state_data = await state.get_data()
-
     to_delete = await store.select_one('users', {'telegram': chat_id}, ('temp_state_1',))
     to_delete = json.loads(to_delete['temp_state_1'])
     to_delete = list(to_delete.get('courses'))
@@ -427,23 +313,7 @@ async def catch_group(call: types.CallbackQuery, state: FSMContext):
 
         await MainStates.wait_menu_click.set()
         await update_state(chat_id, MainStates.wait_menu_click, store)
-        # user_state = await StateName(state)
-        # db_upd_user_state(DB_NAME, CHAT_ID, user_state)
 
-        # state_data = await state.get_data()
-
-        # if 'msgToDel' not in state_data.keys():
-        #     var = db_get_save_var(DB_NAME, call.from_user.id, 'temp_var')
-        #     var = str_to_list(var)
-        #     await state.update_data(msgToDel=var)
-        #     state_data = await state.get_data()
-
-        # if call.message.message_id in state_data['msgToDel']:
-        #     state_data['msgToDel'].remove(call.message.message_id)
-        #     for delMsg in state_data['msgToDel']:
-        #         await bot.delete_message(CHAT_ID, delMsg)
-        # else:
-        #     print(f'Warning : {call.message.message_id} not in list')
         user = await store.select_one('users', {'telegram': chat_id}, ('type',))
         await call.message.edit_text('Оберіть категорію курсів:', reply_markup=await MenuKB(user['type']))
         return
