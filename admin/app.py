@@ -49,12 +49,7 @@ class Course(db.Model):
 
 
 class CourseView(ModelView):
-    form_create_rules = [
-        rules.Field('trainer'),
-    ]
-
     def on_model_change(self, form, model, is_created):
-        # if end date before start date or end date in the past, flag them invalid
         try:
             trainer = json.loads(form.trainer._value())
             super().on_model_change(form, model, is_created)
@@ -66,14 +61,26 @@ class Group(db.Model):
     __tablename__ = 'groups'
 
     id = db.Column(Integer, primary_key=True)
+    stream = db.Column(Integer)
     day = db.Column(String(255))
     time = db.Column(Time)
     type = db.Column(Integer)
     chat = db.Column(String(255))
     course = db.Column(Integer, ForeignKey('courses.id', ondelete='CASCADE', onupdate='CASCADE'))
 
+    query = db.session.query_property(SQLAlchemy.Query)
+
+
+    def __init__(self, stream, day, time, type: bool, chat, course):
+        self.stream = stream
+        self.day = day
+        self.time = time
+        self.type = type
+        self.chat = chat
+        self.course = course
+
     def __repr__(self):
-        return self.course, self.daytime
+        return f"Stream: {self.stream} | Day: {self.day} | Time: {self.time}"
 
 
 class GroupView(ModelView):
@@ -86,12 +93,14 @@ class GroupView(ModelView):
         'type': [('Yes', 'Yes'), ('No', 'No')]
 
     }
-
     column_labels = dict(type='Offline')
 
     def on_model_change(self, form, model, is_created):
-        model.type = 1 if model.type == "Yes" else 0
+        model.type = True if model.type == "Yes" else False
         return model
+
+    def on_model_delete(self, model):
+        Group.query.filter(Group.stream == model.stream, Group.course == model.course).delete(synchronize_session='evaluate')
 
 
 class User(db.Model):

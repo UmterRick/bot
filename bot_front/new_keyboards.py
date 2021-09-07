@@ -3,9 +3,16 @@ from datetime import datetime, timedelta
 from utils import create_callback_data
 from user_utils import get_trainers
 from aiogram import types
-from database import *
+# from database import *
 import calendar
 import json
+
+async def BackBtn():
+    keyboard = InlineKeyboardMarkup()
+    back_btn = InlineKeyboardButton('⬅️ Назад', callback_data='turn_back')
+    keyboard.row(back_btn)
+    return keyboard
+
 
 def ChatTypeKB():
     keyboard = InlineKeyboardMarkup()
@@ -222,6 +229,14 @@ async def CoursesKB(bot, call, category):
         PrintException()
         print('ERROR in courses KB')
 
+async def Courses(course):
+    keyboard = InlineKeyboardMarkup(row_width=1)
+
+    inline_btn = InlineKeyboardButton(f"⚪️Перелік груп️⚪️", callback_data=course['id'])
+    url_btn = InlineKeyboardButton(text='📄Повний опис курсу📄', url=course['link'])
+    keyboard.add(inline_btn, url_btn)
+    return keyboard
+
 
 async def GroupsKB(curse_groups, telegram_id, course, state):
     user = User.read(User(), telegram_id)
@@ -418,8 +433,4 @@ def AllGroupsKB():
         PrintException()
 
 
-from storage.db_utils import DataStore
-import asyncio
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(TrainersKB(DataStore()))

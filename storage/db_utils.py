@@ -3,23 +3,12 @@ import psycopg2
 from utils import read_config, ROOT_DIR, set_logger
 from sys import intern, _getframe
 import logging
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    TypeVar,
-    cast,
-    overload,
-)
+from typing import (Any, Dict, List, Iterable, )
+
+# Callable, Iterator, Optional,Tuple,TypeVar,cast, overload,
 
 config = read_config('database.json')
 logger = set_logger('database')
-
 expected_tables = set(config.pop("expected_tables"))
 
 
@@ -106,7 +95,6 @@ class DataStore:
             except Exception as err:
                 logger.error(f"insert: {type(err)=} | {err=} |  {vals=}")
                 return False
-        logger.info(f"{_getframe().f_code.co_name}: {cursor=} |  {vals}")
 
     async def delete(self, table: str, keyvalues: Dict[str, Any]) -> bool:
         sql = "DELETE FROM %s WHERE %s" % (
@@ -116,7 +104,6 @@ class DataStore:
         with self.Cursor(self.conn) as cursor:
             try:
                 cursor.execute(sql, list(keyvalues.values()))
-
                 if cursor.rowcount == 0:
                     raise StoreError(404, f'No rows to delete from {table} where {keyvalues}')
                 return True
@@ -125,7 +112,6 @@ class DataStore:
                 return False
 
     async def update(self, table: str, keyvalues: Dict[str, Any], updatevalues: Dict[str, Any]) -> bool:
-
         if keyvalues:
             sql = "UPDATE %s SET %s WHERE %s;" % (
                 table,
@@ -137,8 +123,7 @@ class DataStore:
                 try:
                     res = self.cursor_to_dict(cursor)
                 except AssertionError:
-                    logger.warning(f"{_getframe().f_code.co_name} | Nothing suitable for the conditions ")
-
+                    logger.warning(f"{_getframe().f_code.co_name} | Nothing suitable for the conditions:   ")
 
         else:
             sql = "UPDATE %s SET %s" % (table, ", ".join("%s = ?" % (k,) for k in updatevalues))
@@ -147,7 +132,8 @@ class DataStore:
                 try:
                     res = self.cursor_to_dict(cursor)
                 except AssertionError:
-                    logger.warning(f"{_getframe().f_code.co_name} | Nothing suitable for the conditions ")
+                    logger.warning(f'''{_getframe().f_code.co_name} | Nothing suitable for the conditions: 
+                    {" AND ".join(f"{k} = {self.add_value(keyvalues[k])}" for k in keyvalues)}''')
 
     @staticmethod
     def cursor_to_dict(cursor) -> List[Dict[str, Any]]:
@@ -179,6 +165,5 @@ class DataStore:
 class StoreError(RuntimeError):
     def __init__(self, code: int, msg: str):
         super().__init__("%d: %s" % (code, msg))
-
         self.code = int(code)
         self.msg = msg

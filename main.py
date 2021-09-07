@@ -21,7 +21,7 @@ webhook_config = read_config('webhook.json')
 memory_storage = MemoryStorage()
 # dp = Dispatcher(bot, storage=memory_storage)
 
-HTML = get_html(C_URL)
+# HTML = get_html(C_URL)
 temp_course_text = {}
 
 WEBHOOK_HOST = webhook_config.get("host", "")
@@ -77,8 +77,8 @@ async def StateName(state: FSMContext):
 async def auth_user_type(message: types.Message, state: FSMContext):
     global CHAT_ID, coursesId, USER_TYPE
     # get_topics(HTML, 'category')
-    coursesId = get_content(HTML)
-    CHAT_ID = message.chat.id
+    # coursesId = get_content(HTML)
+    # CHAT_ID = message.chat.id
     chat = message.chat.id
     curr_user = await store.select_one('users', {'telegram': chat}, ('name', 'type'))
 
@@ -174,24 +174,27 @@ async def auth_user_type(message: types.Message, state: FSMContext):
 @dp.callback_query_handler(state=EnterStates.login_state)
 async def auth_step_two(call: types.CallbackQuery, state: FSMContext):
     print('auth_step_two data = ', call.data)
+    if call.data == 'turn_back':
+        pass
     try:
         user_type = int(call.data)
-    except TypeError as err:
+    except ValueError as err:
         logger.error(f"{_getframe().f_code.co_name} | Incorrect User Type got : {call.data}, 1,2,3 was expected")
         user_type = 3
     await state.update_data(userType=call.data, userID=call.from_user.id)
 
     if user_type in (1, 2):
-        await call.message.edit_text(password_request)
+        pass_msg = await call.message.edit_text(password_request, reply_markup=await BackBtn())
+
+        await store.update('users', {'telegram': call.from_user.id}, {'temp_state_2': pass_msg.message_id})
         await EnterStates.password_state.set()
         await update_state(call.from_user.id, EnterStates.password_state, store)
         await store.update('users', {'telegram': call.from_user.id}, {'temp_state_1': user_type})
     elif user_type == 3:
-        await call.message.edit_text(f"f'Ви увійшли як Учень🤓", reply_markup=MenuKB(3))
+        await call.message.edit_text(f"Ви увійшли як Учень🤓", reply_markup=MenuKB(3))
         await store.update('users', {'telegram': call.from_user.id}, {'temp_state_1': user_type})
         await MainStates.wait_menu_click.set()
         await update_state(call.from_user.id, MainStates.wait_menu_click, store)
-
 
     # elif USER_TYPE == 'Учень🤓':
     #     await call.message.edit_text(f'Ви увійшли як {call.data}', reply_markup=MenuKB(call.from_user.id))
@@ -219,6 +222,13 @@ async def auth_step_two(call: types.CallbackQuery, state: FSMContext):
     # user_state = await StateName(state)
     # db_upd_user_state(DB_NAME, CHAT_ID, user_state)
 
+@dp.callback_query_handler(state=EnterStates.password_state)
+async def from_password(call: types.CallbackQuery, state: FSMContext):
+    if call.data == 'turn_back':
+        await EnterStates.login_state.set()
+        await update_state(call.from_user.id, EnterStates.login_state, store)
+        await call.message.edit_text(start_text, reply_markup=UserTypeKB())
+
 
 @dp.message_handler(state=EnterStates.password_state)  # 2.3  PASSWORD VALID
 async def check_password(message: types.Message, state: FSMContext):
@@ -232,25 +242,35 @@ async def check_password(message: types.Message, state: FSMContext):
     #     await bot.send_message(CHAT_ID, f'Бот активований у групі адміністраторів')
     #
     #     await MainStates.wait_menu_click.set()
+    to_delete = await store.select_one('users', {'telegram': message.from_user.id}, ('temp_state_2',))
+
     if int(user['temp_state_1']) == 1 and message.text == passwords.get('admin', None):
+
         await bot.send_message(message.chat.id, 'Ви увійшли як <b>Адміністратор</b>', parse_mode='HTML',
                                reply_markup=MenuKB(message.chat.id))
+        await bot.delete_message(message.from_user.id, to_delete['temp_state_2'])
+
         await store.update('users', {'telegram': message.chat.id}, {'type': 1})
         await MainStates.wait_menu_click.set()
         await update_state(message.chat.id, MainStates.wait_menu_click, store)
     elif int(user['temp_state_1']) == 2 and message.text == passwords.get('trainer', None):
         await bot.send_message(message.chat.id, 'Оберіть себе у списку', parse_mode='HTML',
                                reply_markup=await TrainersKB(store))
+        await bot.delete_message(message.from_user.id, to_delete['temp_state_2'])
+
         await store.update('users', {'telegram': message.chat.id}, {'type': 2})
         await MainStates.choose_trainer.set()
         await update_state(message.chat.id, MainStates.choose_trainer, store)
-
     else:
-        if str(message.chat.id).startswith('-'):
-            pass
-        else:
-            await message.answer('Невірний пароль, спробуйте ще раз!')
-        return
+        to_delete = await store.select_one('users', {'telegram': message.from_user.id}, ('temp_state_2', ))
+        try:
+            await bot.delete_message(message.from_user.id, to_delete['temp_state_2'])
+        except Exception as ex:
+            logger.error('Cannot delete password request message')
+        pass_msg = await bot.send_message(message.from_user.id, 'Невірний пароль, спробуйте ще раз!', reply_markup=await BackBtn())
+        await store.update('users', {'telegram': message.from_user.id}, {'temp_state_2': pass_msg.message_id})
+
+
     # user_state = await StateName(state)
     # db_upd_user_state(DB_NAME, message.chat.id, user_state)
 
@@ -304,8 +324,9 @@ async def menu_btn_clicked(call: types.CallbackQuery, state: FSMContext):
 
     if call.data == 'turn_back':
         await EnterStates.login_state.set()
-        user_state = await StateName(state)
-        db_upd_user_state(DB_NAME, CHAT_ID, user_state)
+        await update_state(chat_id, EnterStates.login_state, store)
+        # user_state = await StateName(state)
+        # db_upd_user_state(DB_NAME, CHAT_ID, user_state)
         await call.message.edit_text(start_text, reply_markup=UserTypeKB())
 
     if call.data == 'enroll_ok':
@@ -347,83 +368,107 @@ async def show_contacts(call: types.CallbackQuery, state: FSMContext):
         db_upd_user_state(DB_NAME, CHAT_ID, user_state)
 
 
-@dp.callback_query_handler(lambda c: c.data in range_to_str_list(get_topics(HTML, 'category')) or c.data == 'turn_back',
-                           state=MainStates.wait_for_category)
+# lambda c: c.data in range_to_str_list(get_topics(HTML, 'category')) or c.data == 'turn_back',
+@dp.callback_query_handler(state=MainStates.wait_for_category)
 async def send_courses(call: types.CallbackQuery, state: FSMContext):
-    global CHAT_ID, temp_course_text
+    # global CHAT_ID, temp_course_text
     print('send_courses data = ', call.data)
-    CHAT_ID = call.from_user.id
-    Topics = db_read_topics(DB_NAME)
+    chat_id = call.from_user.id
+    # Topics = db_read_topics(DB_NAME)
     if call.data == 'turn_back':
 
         await MainStates.wait_menu_click.set()
-        user_state = await StateName(state)
-        db_upd_user_state(DB_NAME, CHAT_ID, user_state)
+        await update_state(chat_id, MainStates.wait_menu_click, store)
 
         await call.message.edit_text('<b> 📜 Головне Меню 📜 </b> ', parse_mode='HTML',
-                                     reply_markup=MenuKB(call.from_user.id))
+                                     reply_markup=MenuKB(chat_id))
     else:
         category = int(call.data)
-        save_to = 'viewing_category'
-        db_save_var(DB_NAME, CHAT_ID, save_to, category)
-
-        if category in Topics.keys():
-            await CoursesKB(call, category, state, temp_course_text)
-
-            await MainStates.wait_for_course.set()
-            user_state = await StateName(state)
-            db_upd_user_state(DB_NAME, CHAT_ID, user_state)
+        await store.update('users', {'telegram': call.from_user.id}, {'at_category': category})
+        # db_save_var(DB_NAME, CHAT_ID, save_to, category)
+        courses = await store.select('courses', {'category': category}, ('*',))
+        courses_msgs = list()
+        await call.message.delete()
+        for course in courses:
+            trainers = json.loads(course['trainer'])
+            trainers = trainers.get('trainer')
+            course_body = f"✅✅✅" \
+                          f"\n🔹<b>Назва курсу:</b>\n🔹{course['name']}" \
+                          f"\n🔸<b>Тренер:</b>\n🔸{', '.join(trainers)}"
+            new_msg = await bot.send_message(chat_id, course_body,
+                                             parse_mode='HTML', reply_markup=await Courses(course))
+            courses_msgs.append(new_msg.message_id)
+        new_msg = await bot.send_message(chat_id, 'Повернутись до меню', reply_markup=await BackBtn())
+        courses_msgs.append(new_msg.message_id)
+        await store.update('users', {'telegram': chat_id},
+                           {'temp_state_1': json.dumps({"courses": courses_msgs})})
+        # await CoursesKB(call, category, state, temp_course_text)
+        await MainStates.wait_for_course.set()
+        await update_state(chat_id, MainStates.wait_for_course, store)
+        # user_state = await StateName(state)
+        # db_upd_user_state(DB_NAME, CHAT_ID, user_state)
 
 
 @dp.callback_query_handler(state=MainStates.wait_for_course)
 async def catch_group(call: types.CallbackQuery, state: FSMContext):
     global CHAT_ID, msgID, USER_TYPE
     print('catch_group data = ', call.data)
-    CHAT_ID = call.from_user.id
+    chat_id = call.from_user.id
     state_data = await state.get_data()
+
+    to_delete = await store.select_one('users', {'telegram': chat_id}, ('temp_state_1',))
+    to_delete = json.loads(to_delete['temp_state_1'])
+    to_delete = list(to_delete.get('courses'))
+    to_delete.pop(to_delete.index(call.message.message_id))
+    for msg in to_delete:
+        await bot.delete_message(chat_id, msg)
+
     if call.data == 'turn_back':
 
-        await MainStates.wait_for_category.set()
-        user_state = await StateName(state)
-        db_upd_user_state(DB_NAME, CHAT_ID, user_state)
+        await MainStates.wait_menu_click.set()
+        await update_state(chat_id, MainStates.wait_menu_click, store)
+        # user_state = await StateName(state)
+        # db_upd_user_state(DB_NAME, CHAT_ID, user_state)
 
-        state_data = await state.get_data()
+        # state_data = await state.get_data()
 
-        if 'msgToDel' not in state_data.keys():
-            var = db_get_save_var(DB_NAME, call.from_user.id, 'temp_var')
-            var = str_to_list(var)
-            await state.update_data(msgToDel=var)
-            state_data = await state.get_data()
+        # if 'msgToDel' not in state_data.keys():
+        #     var = db_get_save_var(DB_NAME, call.from_user.id, 'temp_var')
+        #     var = str_to_list(var)
+        #     await state.update_data(msgToDel=var)
+        #     state_data = await state.get_data()
 
-        if call.message.message_id in state_data['msgToDel']:
-            state_data['msgToDel'].remove(call.message.message_id)
-            for delMsg in state_data['msgToDel']:
-                await bot.delete_message(CHAT_ID, delMsg)
-        else:
-            print(f'Warning : {call.message.message_id} not in list')
-        await call.message.edit_text('Оберіть категорію курсів:', reply_markup=TopicKB())
+        # if call.message.message_id in state_data['msgToDel']:
+        #     state_data['msgToDel'].remove(call.message.message_id)
+        #     for delMsg in state_data['msgToDel']:
+        #         await bot.delete_message(CHAT_ID, delMsg)
+        # else:
+        #     print(f'Warning : {call.message.message_id} not in list')
+        user = await store.select_one('users', {'telegram': chat_id}, ('type',))
+        await call.message.edit_text('Оберіть категорію курсів:', reply_markup=await MenuKB(user['type']))
         return
 
-    if not 'msgToDel' in state_data:
-        var = db_get_save_var(DB_NAME, call.from_user.id, 'temp_var')
-        var = str_to_list(var)
-        await state.update_data(msgToDel=var)
-        state_data = await state.get_data()
+    # if not 'msgToDel' in state_data:
+    #     var = db_get_save_var(DB_NAME, call.from_user.id, 'temp_var')
+    #     var = str_to_list(var)
+    #     await state.update_data(msgToDel=var)
+    #     state_data = await state.get_data()
 
-    state_data['msgToDel'].remove(call.message.message_id)
-    for delMsg in state_data['msgToDel']:
-        await bot.delete_message(CHAT_ID, delMsg)
+    # state_data['msgToDel'].remove(call.message.message_id)
+    # for delMsg in state_data['msgToDel']:
+    #     await bot.delete_message(CHAT_ID, delMsg)
+    await call.message.edit_text("hello")
+    # cur_groups = db_read_groups(DB_NAME, call.data)
+    # await state.update_data(curCourse=call.data)
+    #
 
-    cur_groups = db_read_groups(DB_NAME, call.data)
-    await state.update_data(curCourse=call.data)
-
-    keyboard = await GroupsKB(cur_groups, call.from_user.id, call.data, state)
-    temp_text = call.message.text
-    await call.message.edit_text(temp_text, reply_markup=keyboard)
-
-    await MainStates.wait_for_group.set()
-    user_state = await StateName(state)
-    db_upd_user_state(DB_NAME, call.from_user.id, user_state)
+    # keyboard = await GroupsKB(cur_groups, call.from_user.id, call.data, state)
+    # temp_text = call.message.text
+    # await call.message.edit_text(temp_text, reply_markup=keyboard)
+    #
+    # await MainStates.wait_for_group.set()
+    # user_state = await StateName(state)
+    # db_upd_user_state(DB_NAME, call.from_user.id, user_state)
 
 
 @dp.callback_query_handler(lambda c: 'accept' not in c.data, state=MainStates.wait_for_group)
@@ -1039,7 +1084,7 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     # loop.call_later(10, repeat, job, loop)
     loop.run_until_complete(bot.set_my_commands(commands))
-    # loop.run_until_complete(get_content(store))
+    loop.run_until_complete(get_content(store))
     start_webhook(
         dispatcher=dp,
         webhook_path=WEBHOOK_PATH,

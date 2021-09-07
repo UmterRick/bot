@@ -47,3 +47,4 @@ async def get_trainers(store):
         all_trainers += names.get('trainer', [])
     return list(set(all_trainers))
 
+
