@@ -58,7 +58,8 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS user_group (
 	"user" integer NOT NULL,
 	"group" integer NOT NULL,
-	"type" varchar(255) NOT NULL
+	"type" varchar(255) NOT NULL,
+	CONSTRAINT "user_group_pk" PRIMARY KEY ("user", "group")
 ) WITH (
   OIDS=FALSE
 );
@@ -73,7 +74,5 @@ ALTER TABLE "groups" ADD CONSTRAINT "groups_fk0" FOREIGN KEY ("course") REFERENC
 ALTER TABLE "user_group" ADD CONSTRAINT "user_group_fk0" FOREIGN KEY ("user") REFERENCES "users"("id");
 
 ALTER TABLE "user_group" ADD CONSTRAINT "user_group_fk1" FOREIGN KEY ("group") REFERENCES "groups"("id");
-
-
 
 

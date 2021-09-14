@@ -52,6 +52,7 @@ class CourseView(ModelView):
     def on_model_change(self, form, model, is_created):
         try:
             trainer = json.loads(form.trainer._value())
+            a = trainer['trainer']
             super().on_model_change(form, model, is_created)
         except Exception as ex:
             raise validators.ValidationError('Check trainer filed pattern {"trainer": ["name1", "name2"]}')

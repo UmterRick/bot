@@ -5,7 +5,9 @@ from user_utils import get_trainers
 from aiogram import types
 # from database import *
 import calendar
+from utils import update_user_group
 import json
+
 
 async def BackBtn():
     keyboard = InlineKeyboardMarkup()
@@ -66,17 +68,9 @@ async def TrainersKB(store):
     keyboard = InlineKeyboardMarkup()
     trainers = await get_trainers(store)
     for trainer in trainers:
-        callback = list()
-        button = str()
-        # for course in trainers[trainer]:
-        #     temp = callback + trainers[trainer][course]['groups']
-        #     callback = temp
-        #     if len(callback) == 0:
-        #         button = '[]'
-        #     else:
-        #         button = str(temp)[1:-1]
-        trainer_btn = InlineKeyboardButton(trainer, callback_data=trainer)
-        keyboard.row(trainer_btn)
+        if trainer not in ('', ' ', ','):
+            trainer_btn = InlineKeyboardButton(trainer, callback_data=trainer)
+            keyboard.row(trainer_btn)
     back_btn = InlineKeyboardButton('⬅️ Назад', callback_data='turn_back')
     keyboard.row(back_btn)
 
@@ -128,6 +122,56 @@ async def TopicKB(store):
     back_btn = InlineKeyboardButton('⬅️ Назад', callback_data='turn_back')
     keyboard.row(back_btn)
     return keyboard
+
+
+async def MyCourses(store, user):
+    send = {}
+    trainers = ()
+    await update_user_group(store)
+    if user['type'] == 2:
+        groups = await store.select('"user_group"', {'"user"': user['id'], 'type': 'trainer'}, ('"group"', ))
+        data = {}
+
+        for group in groups:
+            group_info = await store.select_one('groups', {'id': group['group']},
+                                                ('id', 'stream', 'day', 'time', 'type', 'course', 'chat'))
+            course = await store.select_one('courses', {'id': group_info['course']}, ('name', 'id', 'trainer'))
+            trainers = json.loads(course['trainer'])
+            trainers = trainers['trainer']
+            if data.get(course['id'], None) is None:
+                data[course['id']] = {'name': course['name'], 'groups': [group_info, ]}
+            data[course['id']]['groups'].append(group_info)
+        if user['name'] not in trainers:
+            return send
+        for key, value in data.items():
+            msg = value['name']
+            stream = {}
+            send[key] = {'course': msg,
+                         'groups': []}
+            for group in value['groups']:
+                group_data = (group['day'], group['time'], group['type'], group['id'])
+                if stream.get(group['stream'], None) is None:
+                    stream[group['stream']] = [group_data, ]
+                if group_data not in stream[group['stream']]:
+                    stream[group['stream']].append(group_data)
+
+            for st, gr in stream.items():
+                g_msg = ""
+                keyboard = InlineKeyboardMarkup()
+                print(gr)
+                callback = list()
+                for info in gr:
+                    gr_type = '🌐 Online' if info[2] else '🏠 Offline'
+                    g_msg += f"📅{info[0]}  🕒{info[1].strftime('%H:%m')} {gr_type}\n"
+                    callback.append(info[3])
+                btn = InlineKeyboardButton("Студенти", callback_data=json.dumps({'students': callback}))
+                print(callback)
+                keyboard.add(btn)
+                send[key]['groups'].append((g_msg, keyboard))
+
+        return send
+
+
 
 
 def MyCoursesKB(telegram_id):
@@ -370,6 +414,8 @@ def StudentsKB(group_id):
     keyboard.row(back_btn)
     return keyboard
 
+async def Students(group_id):
+    ...
 
 def AddChatKB():
     keyboard = InlineKeyboardMarkup()
