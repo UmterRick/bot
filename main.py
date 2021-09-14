@@ -120,7 +120,7 @@ async def auth_step_two(call: types.CallbackQuery):
         await store.update('users', {'telegram': call.from_user.id}, {'temp_state_1': user_type})
     elif user_type == 3:
         await call.message.edit_text(f"Ви увійшли як Учень🤓", reply_markup=MenuKB(3))
-        await store.update('users', {'telegram': call.from_user.id}, {'temp_state_1': user_type})
+        await store.update('users', {'telegram': call.from_user.id}, {'type': user_type})
         await MainStates.wait_menu_click.set()
         await update_state(call.from_user.id, MainStates.wait_menu_click, store)
 
