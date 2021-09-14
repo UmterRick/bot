@@ -50,4 +50,18 @@ def create_callback_data(*args):
 def separate_callback_data(data):
     return data.split(";")
 
-set_logger('database')
+
+async def update_user_group(store):
+    users = await store.select('users', {'type': 2}, {'name', 'id', 'type'})
+    for user in users:
+        courses = await store.select('courses', None, ('id', 'trainer'))
+        for course in courses:
+            trainers = json.loads(course['trainer'])
+            trainers = trainers['trainer']
+            if user['name'] in trainers:
+                groups = await store.select('groups', {'course': course['id']}, ('id', 'day', 'time'))
+                for group in groups:
+                    try:
+                        await store.insert('user_group', {'"user"': user['id'], '"group"': group['id'], 'type': 'trainer'})
+                    except Exception as ex:
+                        print(ex)

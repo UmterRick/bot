@@ -21,6 +21,8 @@ class DataStore:
     @staticmethod
     def add_value(value):
         if isinstance(value, str):
+            if 'SELECT' in value.upper() and 'FROM' in value.upper():
+                return value
             return f"'{value}'"
         else:
             return value
@@ -87,13 +89,16 @@ class DataStore:
         )
         with self.Cursor(self.conn) as cursor:
             try:
-                logger.info(f"{_getframe().f_code.co_name}: Add new record {vals}")
                 cursor.execute(sql, vals)
+                logger.info(f"{_getframe().f_code.co_name}: Add new record {vals}")
                 return True
             except psycopg2.DatabaseError as err:
-                logger.error(f"{_getframe().f_code.co_name}:  {err}|  {vals}")
+                if err.pgcode == '23505':
+                    logger.warning(f"{_getframe().f_back.f_code.co_name} --> {_getframe().f_code.co_name} Skip ")
+                logger.error(f"{_getframe().f_back.f_code.co_name} --> {_getframe().f_code.co_name}: DB Error {err}|  {vals}")
             except Exception as err:
-                logger.error(f"insert: {type(err)=} | {err=} |  {vals=}")
+                logger.error(f"{_getframe().f_back.f_code.co_name} --> {_getframe().f_code.co_name}: "
+                             f"{type(err)=} | {err=} |  {vals=}")
                 return False
 
     async def delete(self, table: str, keyvalues: Dict[str, Any]) -> bool:
@@ -119,11 +124,12 @@ class DataStore:
                 " AND ".join(f"{k} = {self.add_value(keyvalues[k])}" for k in keyvalues),
             )
             with self.Cursor(self.conn) as cursor:
-                cursor.execute(sql, list(keyvalues.values()))
                 try:
-                    res = self.cursor_to_dict(cursor)
-                except AssertionError:
-                    logger.warning(f"{_getframe().f_code.co_name} | Nothing suitable for the conditions:   ")
+                    cursor.execute(sql, list(keyvalues.values()))
+                except Exception as ex:
+                    logger.warning(f'{_getframe().f_back.f_code.co_name} -> {_getframe().f_code.co_name}'
+                                   f' | {ex} WHERE '
+                                   f'{" AND ".join(f"{k} = {self.add_value(keyvalues[k])}" for k in keyvalues)})')
 
         else:
             sql = "UPDATE %s SET %s" % (table, ", ".join("%s = ?" % (k,) for k in updatevalues))

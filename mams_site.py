@@ -49,7 +49,15 @@ async def get_content(store):
                 if '(' in title_clear:
                     name = title_clear[0:title_clear.find('(')]
                     trainer = title_clear[title_clear.find('(') + 1:title_clear.find(')')]
-                    trainer = {'trainer': trainer.split(',')}
+                    names = list()
+                    for tr_name in trainer.split(','):
+                        if '.' in tr_name:
+                            delimiter = tr_name.find('.')
+                            if tr_name[delimiter+1] != ' ':
+                                tr_name = tr_name[:delimiter+1] + ' ' + tr_name[delimiter+1:]
+
+                        names.append(tr_name)
+                    trainer = {'trainer': names}
                     trainer = json.dumps(trainer, ensure_ascii=False)
 
                 else:
