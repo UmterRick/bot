@@ -1,3 +1,5 @@
+import json
+
 from database import Group, DataBase, User
 # from configs import PrintException
 from datetime import datetime
@@ -30,6 +32,28 @@ trainer_manual = "<b>Перед</b> натискання кнопки нижче
 
 warn_text = "<b>Така група вже існує</b>"
 
+async def create_new_enroll(user, store):
+    current_enroll = json.loads(user['temp_state_2'])
+    to_admin_text = f"<strong>Получена новая заявка</strong>\n\nІм'я: <i>{user['name']}</i>;" \
+                    f"\nНікнейм: @{user['nickname']};\nТелефон: {user['contact']}\n\nЗаписан(а) на курсы: \n"
+    groups = await store.select('user_group', {'"user"': user['id'], 'type': 'student'}, ('"group"',))
+    new_course = await store.select_one('courses', {'id': current_enroll[0]}, ('name',))
+    user_courses = list()
+    for group in groups:
+        course_id = await store.select_one('groups', {'id': group['group']}, ('course',))
+        course_id = course_id['course']
+        user_courses.append(course_id)
+    user_courses = list(set(user_courses))
+    print(user_courses)
+    for course in user_courses:
+        course = await store.select_one('courses', {'id': int(course)}, ('name', ))
+        course_msg = f"\t✅ Курс : {course['name']}\n"
+        to_admin_text += course_msg
+    to_admin_text += '\nЗаявка подана на:\n'
+    new_course_msg = f"\t✅ Курс : {new_course['name']} \n" \
+                     f"\t\t{current_enroll[1]} Потік\n"
+    to_admin_text += new_course_msg
+    return to_admin_text
 
 def Enroll_text(user):
     courses = DataBase.getCourses(DataBase())
