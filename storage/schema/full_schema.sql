@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS groups (
 	"time" time NOT NULL ,
 	"type" BOOLEAN NOT NULL,
 	"course" INTEGER NOT NULL,
-	"chat" varchar(255) NOT NULL,
+	"chat" varchar(255),
 	CONSTRAINT "groups_pk" PRIMARY KEY ("id")
 ) WITH (
   OIDS=FALSE
