@@ -16,7 +16,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from utils import read_config, set_logger, update_user_group, get_admin_group
 from storage.db_utils import DataStore
 from user_utils import USER_TYPE, update_state
-
+from collections import Iterable
 from mams_site import get_content
 from sys import _getframe
 from typing import Optional
@@ -344,7 +344,11 @@ async def courses_list_request(call: types.CallbackQuery, state: FSMContext):
         await call.message.edit_text('<b> 📜 Головне Меню 📜 </b> ', parse_mode='HTML',
                                      reply_markup=await MenuKB(user['type']))
     else:
-        category = int(call.data)
+        if call.data.isdigit():
+            category = int(call.data)
+        else:
+            logger.error(f"Call data must be digit str, got {call.data} instead")
+            return
         await store.update('users', {'telegram': call.message.chat.id}, {'at_category': category})
         courses = await store.select('courses', {'category': category}, ('*',))
         courses_msgs = list()
@@ -421,7 +425,11 @@ async def group_request(call: types.CallbackQuery, state: FSMContext):
 
     data = json.loads(call.data)
     print(f"wait_for_group {await state.get_state()} || {data}")
-    course_id, stream_id, request_type = data
+    if isinstance(data, Iterable):
+        course_id, stream_id, request_type = data
+    else:
+        logger.error(f"Got wrong callback from user {chat_id}, wait iterable, got {call.data} instead")
+        return
     print(f'group data {course_id=} | {stream_id=} | {request_type=}')
 
     if request_type == 'enroll':
@@ -584,23 +592,26 @@ async def client_answer_enroll_message(input_obj: [types.Message, types.Callback
             contact = input_obj.contact.phone_number
         else:
             contact = None
+    else:
+        logger.error(f"Input must be message or callback")
+        return
 
     admin_chat = await get_admin_group(store)
     user = await store.select_one('users', {'telegram': chat_id},
                                   ('id', 'type', 'temp_state_1', 'temp_state_2', 'contact',
                                    'name', 'nickname'))
 
-    if message.text == 'Ні' or data is False:
+    if data is False or data == 'Ні':
         await bot.delete_message(chat_id, user['temp_state_1'])
         await bot.send_message(chat_id, '<b> Ви відмінили відправку заявки </b> ', parse_mode='HTML',
-                               reply_markup=await MenuKB(message.chat.id))
+                               reply_markup=await MenuKB(chat_id))
         await MainStates.wait_menu_click.set()
         await update_state(chat_id, MainStates.wait_menu_click, store)
 
-    elif message.content_type == 'contact' or message.text == 'Так' or data is True:
+    elif contact is not None or data == 'Так' or data is True:
         phone = user['contact']
         if phone is None or not phone:
-            await store.update('users', {'telegram': chat_id}, {'contact': message.contact.phone_number})
+            await store.update('users', {'telegram': chat_id}, {'contact': contact})
             user = await store.select_one('users', {'telegram': chat_id},
                                           ('id', 'type', 'temp_state_1', 'temp_state_2', 'contact',
                                            'name', 'nickname'))
@@ -613,7 +624,7 @@ async def client_answer_enroll_message(input_obj: [types.Message, types.Callback
             await store.insert('user_group', {'"user"': user['id'], '"group"': group, 'type': 'enroll'})
         keyboard = await admin_enroll_kb(user, enroll_to_groups)
         try:
-            profile_photos = await message.from_user.get_profile_photos(None, 1)
+            profile_photos = await input_obj.from_user.get_profile_photos(None, 1)
             avatar = profile_photos.photos[0][0].file_id
             await bot.send_photo(admin_chat, avatar, enroll_msg, 'HTML', reply_markup=keyboard)
         except Exception as ex:
@@ -628,9 +639,8 @@ async def client_answer_enroll_message(input_obj: [types.Message, types.Callback
         await MainStates.wait_menu_click.set()
         await update_state(chat_id, MainStates.wait_menu_click, store)
 
-
     else:
-        print('client_cancel_enroll MISS DATA ', message.text)
+        print('client_cancel_enroll MISS DATA ', data)
 
 
 @dp.callback_query_handler(lambda c: 'accept' in (c.data) or
