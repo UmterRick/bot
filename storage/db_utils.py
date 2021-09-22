@@ -16,7 +16,7 @@ class DataStore:
 
     def __init__(self):
         self.conn = psycopg2.connect(**config)
-        self.cursor = self.conn.cursor()
+        self.cursor = self.Cursor(self.conn)
 
     @staticmethod
     def add_value(value):
@@ -30,7 +30,7 @@ class DataStore:
     def check_existence(self):
         sql = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
 
-        with self.Cursor(self.conn) as cursor:
+        with self.cursor as cursor:
             try:
                 cursor.execute(sql)
                 tables = cursor.fetchall()
@@ -51,12 +51,12 @@ class DataStore:
                 table,
                 " AND ".join(f"{k} = {self.add_value(keyvalues[k])}" for k in keyvalues),
             )
-            with self.Cursor(self.conn) as cursor:
+            with self.cursor as cursor:
                 cursor.execute(sql, list(keyvalues.values()))
                 res = self.cursor_to_dict(cursor)
         else:
             sql = "SELECT %s FROM %s" % (", ".join(columns), table)
-            with self.Cursor(self.conn) as cursor:
+            with self.cursor as cursor:
                 cursor.execute(sql)
                 res = self.cursor_to_dict(cursor)
 
@@ -68,7 +68,7 @@ class DataStore:
             table,
             " AND ".join(f"{k} = {self.add_value(keyvalues[k])}" for k in keyvalues),
         )
-        with self.Cursor(self.conn) as cursor:
+        with self.cursor as cursor:
             cursor.execute(select_sql, list(keyvalues.values()))
             row = cursor.fetchone()
 
@@ -87,7 +87,7 @@ class DataStore:
             ", ".join(k for k in keys),
             ", ".join("%s" for _ in keys),
         )
-        with self.Cursor(self.conn) as cursor:
+        with self.cursor as cursor:
             try:
                 cursor.execute(sql, vals)
                 logger.info(f"{_getframe().f_code.co_name}: Add new record {vals}")
@@ -106,7 +106,7 @@ class DataStore:
             table,
             " AND ".join(f"{k} = {self.add_value(keyvalues[k])}" for k in keyvalues),
         )
-        with self.Cursor(self.conn) as cursor:
+        with self.cursor as cursor:
             try:
                 cursor.execute(sql, list(keyvalues.values()))
                 if cursor.rowcount == 0:
@@ -116,24 +116,25 @@ class DataStore:
                 logger.error(f"{_getframe().f_code.co_name} | {err}")
                 return False
 
-    async def update(self, table: str, keyvalues: Dict[str, Any], updatevalues: Dict[str, Any]) -> bool:
+    async def update(self, table: str, keyvalues: Dict[str, Any], updatevalues: Dict[str, Any]):
         if keyvalues:
-            sql = "UPDATE %s SET %s WHERE %s;" % (
+            sql = "UPDATE %s SET %s WHERE %s RETURNING *;" % (
                 table,
                 ", ".join(f"{k} = {self.add_value(updatevalues[k])}" for k in updatevalues),
                 " AND ".join(f"{k} = {self.add_value(keyvalues[k])}" for k in keyvalues),
             )
-            with self.Cursor(self.conn) as cursor:
+            with self.cursor as cursor:
                 try:
                     cursor.execute(sql, list(keyvalues.values()))
+                    return self.cursor_to_dict(cursor)
                 except Exception as ex:
-                    logger.warning(f'{_getframe().f_back.f_code.co_name} -> {_getframe().f_code.co_name}'
-                                   f' | {ex} WHERE '
-                                   f'{" AND ".join(f"{k} = {self.add_value(keyvalues[k])}" for k in keyvalues)})')
+                    logger.warning(f'{_getframe().f_back.f_code.co_name} -> {_getframe().f_code.co_name}  '
+                                   f'Exception: {ex}')
+
 
         else:
             sql = "UPDATE %s SET %s" % (table, ", ".join("%s = ?" % (k,) for k in updatevalues))
-            with self.Cursor(self.conn) as cursor:
+            with self.cursor as cursor:
                 cursor.execute(sql)
                 try:
                     res = self.cursor_to_dict(cursor)
@@ -162,8 +163,8 @@ class DataStore:
         def __enter__(self):
             self.cursor = self.db.cursor()
             return self.cursor
-
-        def __exit__(self, exc_class, exc, traceback):
+        
+        def __exit__(self, exc_type, exc_val, exc_tb):
             self.db.commit()
             self.cursor.close()
 
