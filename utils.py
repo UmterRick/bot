@@ -1,6 +1,7 @@
 import json
 import os
 import logging
+
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -39,16 +40,17 @@ def set_logger(logger_name) -> logging.Logger:
 
     return logger
 
-def create_callback_data(*args):
-    data = []
-    for arg in args:
-        data.append(str(arg))
-    res = ';'.join(data)
-    return res
 
-
-def separate_callback_data(data):
-    return data.split(";")
+# def create_callback_data(*args):
+#     data = []
+#     for arg in args:
+#         data.append(str(arg))
+#     res = ';'.join(data)
+#     return res
+#
+#
+# def separate_callback_data(data):
+#     return data.split(";")
 
 
 async def update_user_group(store):
@@ -62,6 +64,20 @@ async def update_user_group(store):
                 groups = await store.select('groups', {'course': course['id']}, ('id', 'day', 'time'))
                 for group in groups:
                     try:
-                        await store.insert('user_group', {'"user"': user['id'], '"group"': group['id'], 'type': 'trainer'})
+                        await store.insert('user_group',
+                                           {'"user"': user['id'], '"group"': group['id'], 'type': 'trainer'})
                     except Exception as ex:
                         print(ex)
+
+
+async def get_admin_group(store):
+    cursor = store.Cursor(store.conn)
+    with cursor as c:
+        sql = "SELECT * FROM users WHERE telegram < 0 LIMIT 1"
+        c.execute(sql)
+        admin_chat = store.cursor_to_dict(c)
+        if len(admin_chat) > 0:
+            admin_chat = admin_chat[0]['telegram']
+        else:
+            admin_chat = 00000000
+        return admin_chat
