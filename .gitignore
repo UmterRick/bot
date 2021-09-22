@@ -8,3 +8,6 @@ env.bak/
 venv.bak/
 
 __pycache__/
+
+.dat
+.meta
