@@ -10,6 +10,7 @@ from sqlalchemy import Integer, ForeignKey, String, Time
 from flask_admin import Admin
 from flask_sqlalchemy import SQLAlchemy
 from wtforms import form, fields, validators
+from utils import week_days_translate
 
 app = Flask(__name__)
 app.config['FLASK_ADMIN_SWATCH'] = 'cerulean'
@@ -49,6 +50,10 @@ class Course(db.Model):
 
 
 class CourseView(ModelView):
+    column_list = ('id', 'name', 'trainer', 'price', 'description', 'category',)
+    column_sortable_list = ('price', 'category')
+    column_searchable_list = ('trainer', 'category', 'name')
+
     def on_model_change(self, form, model, is_created):
         try:
             trainer = json.loads(form.trainer._value())
@@ -64,6 +69,7 @@ class Group(db.Model):
     id = db.Column(Integer, primary_key=True)
     stream = db.Column(Integer)
     day = db.Column(String(255))
+    program_day = db.Column(String(40))
     time = db.Column(Time)
     type = db.Column(Integer)
     chat = db.Column(String(255))
@@ -71,12 +77,12 @@ class Group(db.Model):
 
     query = db.session.query_property(SQLAlchemy.Query)
 
-
-    def __init__(self, stream, day, time, type: bool, chat, course):
+    def __init__(self, stream, day, program_day, time, type: bool, chat, course):
         self.stream = stream
         self.day = day
         self.time = time
         self.type = type
+        self.program_day = program_day
         self.chat = chat
         self.course = course
 
@@ -85,6 +91,10 @@ class Group(db.Model):
 
 
 class GroupView(ModelView):
+    column_list = ('stream', 'day', 'time', 'type', 'course')
+    form_excluded_columns = ('program_day', 'chat')
+    column_searchable_list = ('course', 'day')
+    column_sortable_list = ('stream', 'day', 'time', 'type', 'course')
     form_choices = {
         'day': [
             ('Понеділок', 'Понеділок'), ('Вівторок', 'Вівторок'),
@@ -94,14 +104,16 @@ class GroupView(ModelView):
         'type': [('Yes', 'Yes'), ('No', 'No')]
 
     }
-    column_labels = dict(type='Offline')
+    column_labels = dict(type='Offline?')
 
     def on_model_change(self, form, model, is_created):
         model.type = True if model.type == "Yes" else False
+        model.program_day = week_days_translate[model.day]
         return model
 
     def on_model_delete(self, model):
-        Group.query.filter(Group.stream == model.stream, Group.course == model.course).delete(synchronize_session='evaluate')
+        Group.query.filter(Group.stream == model.stream, Group.course == model.course).delete(
+            synchronize_session='evaluate')
 
 
 class User(db.Model):
@@ -128,11 +140,14 @@ class User(db.Model):
 class UserView(ModelView):
     column_list = ('name', 'nickname', 'contact', 'type',)
     form_columns = ('name', 'nickname', 'contact', 'type',)
+    column_sortable_list = ('name', 'nickname', 'contact', 'type',)
+    column_searchable_list = ('name', 'nickname', 'contact', 'type')
     can_create = False
     form_choices = {
         'type': [
             ('admin', 'admin'), ('trainer', 'trainer'), ('student', 'student')
-    ]}
+        ]}
+
     def on_model_change(self, form, model, is_created):
         if model.type == 'admin':
             model.type = 1
@@ -141,6 +156,7 @@ class UserView(ModelView):
         elif model.type == 'student':
             model.type = 3
         return model
+
 
 class UserGroupModel(db.Model):
     __tablename__ = 'user_group'

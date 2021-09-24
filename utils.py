@@ -3,6 +3,16 @@ import os
 import logging
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+week_days_tuple = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+week_days_translate = {
+    "Понеділок": "Monday",
+    "Вівторок": "Tuesday",
+    "Середа": "Wednesday",
+    "Четвер": "Thursday",
+    "П'ятниця": "Friday",
+    "Субота": "Saturday",
+    "Неділя": "Sunday",
+}
 
 
 def read_config(config_json_filename):
@@ -39,18 +49,6 @@ def set_logger(logger_name) -> logging.Logger:
     logger.addHandler(f_handler)
 
     return logger
-
-
-# def create_callback_data(*args):
-#     data = []
-#     for arg in args:
-#         data.append(str(arg))
-#     res = ';'.join(data)
-#     return res
-#
-#
-# def separate_callback_data(data):
-#     return data.split(";")
 
 
 async def update_user_group(store):
