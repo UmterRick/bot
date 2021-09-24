@@ -117,25 +117,22 @@ async def TopicKB(store):
     return keyboard
 
 
-async def MyCourses(store, user):
+async def my_courses(store, user):
     send = {}
-    trainers = ()
     await update_user_group(store)
     if user['type'] == 2:
         groups = await store.select('"user_group"', {'"user"': user['id'], 'type': 'trainer'}, ('"group"',))
         data = {}
-
         for group in groups:
             group_info = await store.select_one('groups', {'id': group['group']},
                                                 ('id', 'stream', 'day', 'time', 'type', 'course', 'chat'))
             course = await store.select_one('courses', {'id': group_info['course']}, ('name', 'id', 'trainer'))
             trainers = json.loads(course['trainer'])
             trainers = trainers['trainer']
-            if data.get(course['id'], None) is None:
-                data[course['id']] = {'name': course['name'], 'groups': [group_info, ]}
-            data[course['id']]['groups'].append(group_info)
-        if user['name'] not in trainers:
-            return send
+            if user['name'] in trainers:
+                if data.get(course['id'], None) is None:
+                    data[course['id']] = {'name': course['name'], 'groups': [group_info, ]}
+                data[course['id']]['groups'].append(group_info)
         for key, value in data.items():
             msg = value['name']
             stream = {}
@@ -169,6 +166,7 @@ async def MyCourses(store, user):
             group_info = await store.select_one('groups', {'id': group['group']},
                                                 ('id', 'stream', 'day', 'time', 'type', 'course', 'chat'))
             course = await store.select_one('courses', {'id': group_info['course']}, ('name', 'id', 'trainer'))
+            print(f"------- {group_info}, {course} ----------")
             # trainers = json.loads(course['trainer'])
             # trainers = trainers['trainer']
             if data.get(course['id'], None) is None:
@@ -191,8 +189,9 @@ async def MyCourses(store, user):
             for st, gr in stream.items():
                 g_msg = ""
                 for info in gr:
+                    print(f"*********** {info}")
                     gr_type = '🌐 Online' if info[2] else '🏠 Offline'
-                    g_msg += f"📅{info[0]}  🕒{info[1].strftime('%H:%m')} {gr_type}\n"
+                    g_msg += f"📅{info[0]}  🕒{info[1].hour}:{info[1].minute} {gr_type}\n"
                 send[key]['groups'].append((g_msg, None))
 
         return send
@@ -440,19 +439,17 @@ async def admin_enroll_kb(user: dict, groups: list):
     keyboard = InlineKeyboardMarkup()
     accept = InlineKeyboardButton('Підтвердити✅',
                                   callback_data=json.dumps(
-                                      {'1':
-                                          {
-                                              'u': user['id'],
-                                              'g': groups
-                                          }
+                                      {
+                                          's': True,
+                                          'u': user['id'],
+                                          'g': groups
                                       }))
     decline = InlineKeyboardButton('Відхилити❌',
                                    callback_data=json.dumps(
-                                       {'0':
-                                           {
-                                               'u': user['id'],
-                                               'g': groups
-                                           }
+                                       {
+                                           's': False,
+                                           'u': user['id'],
+                                           'g': groups
                                        }))
     keyboard.add(accept, decline)
     return keyboard
@@ -491,6 +488,9 @@ def StudentsKB(group_id):
 async def Students(group_id):
     ...
 
+
+def push_keyboard():
+    return InlineKeyboardMarkup().row(InlineKeyboardButton("Прочитано", callback_data='read_push'))
 
 def AddChatKB():
     keyboard = InlineKeyboardMarkup()

@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS groups (
 	"id" SERIAL NOT NULL UNIQUE ,
 	"stream" INTEGER NOT NULL,
 	"day" TEXT NOT NULL,
+	"program_day" varchar(40),
 	"time" time NOT NULL ,
 	"type" BOOLEAN NOT NULL,
 	"course" INTEGER NOT NULL,
@@ -59,6 +60,7 @@ CREATE TABLE IF NOT EXISTS user_group (
 	"user" integer NOT NULL,
 	"group" integer NOT NULL,
 	"type" varchar(255) NOT NULL,
+	"push" integer,
 	CONSTRAINT "user_group_pk" PRIMARY KEY ("user", "group")
 ) WITH (
   OIDS=FALSE
