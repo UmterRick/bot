@@ -15,7 +15,7 @@ week_days_translate = {
 }
 
 
-def read_config(config_json_filename):
+def read_config(config_json_filename) -> dict:
     path = ROOT_DIR + '/configs/' + config_json_filename
     with open(path) as config_json:
         config = json.load(config_json)
@@ -71,7 +71,7 @@ async def update_user_group(store):
 async def get_admin_group(store):
     cursor = store.Cursor(store.conn)
     with cursor as c:
-        sql = "SELECT * FROM users WHERE telegram < 0 LIMIT 1"
+        sql = "SELECT * FROM users WHERE telegram < 0 AND name = 'AdminChat' LIMIT 1"
         c.execute(sql)
         admin_chat = store.cursor_to_dict(c)
         if len(admin_chat) > 0:
