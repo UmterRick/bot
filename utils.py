@@ -40,7 +40,7 @@ def set_logger(logger_name) -> logging.Logger:
     f_handler.setLevel(levels.get(logger_config.get('level')))
     # Create formatters and add it to handlers
     c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    f_format = logging.Formatter('%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s')
+    f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(funcName)s - %(message)s')
 
     c_handler.setFormatter(c_format)
     f_handler.setFormatter(f_format)

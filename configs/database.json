@@ -4,6 +4,6 @@
   "password": "postgres",
   "host": "localhost",
   "port": 5432,
-  "expected_tables": ["groups", "categories", "courses", "users", "user_group"]
+  "expected_tables": ["groups", "categories", "courses", "users", "user_group", "user_login"]
 
 }

@@ -4,26 +4,46 @@ from flask import url_for, redirect, render_template, request
 from flask_admin.contrib import sqla
 from flask import Flask
 from flask_admin.form import fields, rules
+from flask_admin.contrib.fileadmin import FileAdmin
+from flask_admin.contrib.fileadmin.s3 import S3FileAdmin
 from flask_admin.contrib.sqla import ModelView
+
 from flask_admin.model import typefmt
 from flask_admin.model.template import macro
 from sqlalchemy import Integer, ForeignKey, String, Time
-from flask_admin import Admin, AdminIndexView, helpers, expose
+from flask_admin import Admin, AdminIndexView, helpers, expose, BaseView
 import flask_login as login
 from werkzeug.security import generate_password_hash, check_password_hash
-
+from flask_babelex import Babel
 from flask_sqlalchemy import SQLAlchemy
 from wtforms import form, fields, validators
-from utils import week_days_translate
+from utils import week_days_translate, ROOT_DIR
+import os
 
 app = Flask(__name__)
+
 app.config['FLASK_ADMIN_SWATCH'] = 'cerulean'
 app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:postgres@localhost:5432/botdb"
 app.config['SECRET'] = '\x08/\x8a\x15(~\xe6\xe85-\xc7\x93\xdd\xb7\x88\xd0\xd9\xb1\xa5&\x98\xf8P'
 db = SQLAlchemy(app)
+babel = Babel(app)
 
 
-# Add administrative views here
+class LoginView(ModelView):
+    can_create = False
+    can_edit = False
+    can_delete = False
+    can_set_page_size = False
+    can_view_details = False
+
+    def is_accessible(self):
+        return False
+
+
+class LogsView(ModelView):
+
+    def is_accessible(self):
+        return login.current_user.is_authenticated
 
 
 class Category(db.Model):
@@ -93,11 +113,11 @@ class Group(db.Model):
 
     query = db.session.query_property(SQLAlchemy.Query)
 
-    def __init__(self, stream, day, program_day, time, type: bool, chat, course):
+    def __init__(self, stream, day, program_day, time, type_: bool, chat, course):
         self.stream = stream
         self.day = day
         self.time = time
-        self.type = type
+        self.type = type_
         self.program_day = program_day
         self.chat = chat
         self.course = course
@@ -122,7 +142,7 @@ class GroupView(ModelView):
     }
     column_labels = dict(type='Offline?')
 
-    def on_model_change(self, form, model, is_created):
+    def on_model_change(self, form_, model, is_created):
         model.type = True if model.type == "Yes" else False
         model.program_day = week_days_translate[model.day]
         return model
@@ -198,9 +218,6 @@ class UserLogin(db.Model):
     login = db.Column(db.String(80), unique=True)
     password = db.Column(db.String(255))
 
-    # Flask-Login integration
-    # NOTE: is_authenticated, is_active, and is_anonymous
-    # are methods in Flask-Login < 0.3.0
     @property
     def is_authenticated(self):
         return True
@@ -216,12 +233,10 @@ class UserLogin(db.Model):
     def get_id(self):
         return self.id
 
-    # Required for administrative interface
     def __unicode__(self):
         return self.username
 
 
-# Define login and registration forms (for flask-login)
 class LoginForm(form.Form):
     login = fields.StringField(validators=[validators.data_required()])
     password = fields.PasswordField(validators=[validators.data_required()])
@@ -232,45 +247,13 @@ class LoginForm(form.Form):
         if user is None:
             raise validators.ValidationError('Invalid user')
 
-        # we're comparing the plaintext pw with the the hash from the db
         if not check_password_hash(user.password, self.password.data):
-            # to compare plain text passwords use
-            # if user.password != self.password.data:
             raise validators.ValidationError('Invalid password')
 
     def get_user(self):
         return db.session.query(UserLogin).filter_by(login=self.login.data).first()
 
 
-class RegistrationForm(form.Form):
-    login = fields.StringField(validators=[validators.data_required()])
-    email = fields.StringField()
-    password = fields.PasswordField(validators=[validators.data_required()])
-
-    def validate_login(self, field):
-        if db.session.query(UserLogin).filter_by(login=self.login.data).count() > 0:
-            raise validators.ValidationError('Duplicate username')
-
-
-# Initialize flask-login
-def init_login():
-    login_manager = login.LoginManager()
-    login_manager.init_app(app)
-
-    # Create user loader function
-    @login_manager.user_loader
-    def load_user(user_id):
-        return db.session.query(UserLogin).get(user_id)
-
-
-# Create customized model view class
-class MyModelView(sqla.ModelView):
-
-    def is_accessible(self):
-        return login.current_user.is_authenticated
-
-
-# Create customized index view class that handles login & registration
 class MyAdminIndexView(AdminIndexView):
 
     @expose('/')
@@ -288,66 +271,73 @@ class MyAdminIndexView(AdminIndexView):
             login.login_user(user)
 
         if login.current_user.is_authenticated:
-            from flask_admin.model import BaseModelView
-            print("====" * 50)
-            cv = CourseView(Course, db.session)
-            cv.is_visible()
-
             return redirect(url_for('.index'))
-        # link = '<p>Don\'t have an account? <a href="' + url_for('.register_view') + '">Click here to
-        # register.</a></p>'
         self._template_args['form'] = form
-        # self._template_args['link'] = link
-        return super(MyAdminIndexView, self).index()
-
-    @expose('/register/', methods=('GET', 'POST'))
-    def register_view(self):
-        form = RegistrationForm(request.form)
-        if helpers.validate_form_on_submit(form):
-            user = UserLogin()
-
-            form.populate_obj(user)
-            # we hash the users password to avoid saving it as plaintext in the db,
-            # remove to use plain text:
-            user.password = generate_password_hash(form.password.data)
-
-            db.session.add(user)
-            db.session.commit()
-
-            login.login_user(user)
-            return redirect(url_for('.index'))
-        link = '<p>Already have an account? <a href="' + url_for('.login_view') + '">Click here to log in.</a></p>'
-        self._template_args['form'] = form
-        self._template_args['link'] = link
         return super(MyAdminIndexView, self).index()
 
     @expose('/logout/')
     def logout_view(self):
-        global admin
         login.logout_user()
-        admin._views = []
         return redirect(url_for('.index'))
 
 
-# Flask views
 @app.route('/')
 def index():
     return render_template('index.html')
 
 
-# Initialize flask-login
-init_login()
+def init_login():
+    login_manager = login.LoginManager()
+    login_manager.init_app(app)
 
+    @login_manager.user_loader
+    def load_user(user_id):
+        return db.session.query(UserLogin).get(user_id)
+
+
+class MainLogView(BaseView):
+    @expose('/')
+    def index(self):
+
+        with open(ROOT_DIR + '/log/main.log', 'r') as m_logs:
+            content = m_logs.read()
+
+        return self.render('log_template.html', content=content)
+
+
+class DBLogView(BaseView):
+    @expose('/')
+    def index(self):
+
+        with open(ROOT_DIR + '/log/database.log', 'r') as m_logs:
+            content = m_logs.read()
+
+        return self.render('log_template.html', content=content)
+
+
+class UtilsLogView(BaseView):
+    @expose('/')
+    def index(self):
+        with open(ROOT_DIR + '/log/utils.log', 'r') as m_logs:
+            content = m_logs.read()
+
+        return self.render('log_template.html', content=content)
+
+
+init_login()
 admin = Admin(app, name='Bot', index_view=MyAdminIndexView(), base_template='my_master.html',
               template_mode='bootstrap4')
 
-# Add view
-# admin.add_view(MyModelView(UserLogin, db.session))
 try:
+    admin.add_view(LoginView(UserLogin, db.session))
     admin.add_view(CategoryView(Category, db.session))
     admin.add_view(CourseView(Course, db.session))
     admin.add_view(UserView(User, db.session))
     admin.add_view(GroupView(Group, db.session))
+    admin.add_view(MainLogView(name='Main Logs', endpoint='/main_logs', category='Logs'))
+    admin.add_view(DBLogView(name='Database Logs', endpoint='/database_logs', category='Logs'))
+    admin.add_view(UtilsLogView(name='Utils Logs', endpoint='/utils_logs', category='Logs'))
+
 except ValueError:
     pass
 app.secret_key = app.config['SECRET']
@@ -355,5 +345,6 @@ app.secret_key = app.config['SECRET']
 if __name__ == "__main__":
     db.create_all()
     admin_user = UserLogin(login='Admin', password=generate_password_hash('123456'))
+
     db.session.commit()
     app.run(port=8000)

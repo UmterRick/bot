@@ -18,6 +18,7 @@ from storage.db_utils import DataStore
 from user_utils import USER_TYPE, update_state
 from utils import read_config, set_logger, get_admin_group, week_days_tuple  # ,update_user_group
 from datetime import datetime, timedelta
+
 bot_config = read_config('bot.json')
 webhook_config = read_config('webhook.json')
 memory_storage = MemoryStorage()
@@ -42,7 +43,6 @@ logger = set_logger('main')
 
 
 class MainStates(StatesGroup):
-    check_state = State()
     show_contact = State()
     show_my_courses = State()
     choose_trainer = State()
@@ -52,20 +52,12 @@ class MainStates(StatesGroup):
     wait_for_group = State()
     wait_for_client_answer = State()
     students_list = State()
-    check = State()
 
-
-class EnterStates(StatesGroup):
     login_state = State()
     password_state = State()
 
-
-class AdminStates(StatesGroup):
     answer_enroll = State()
     add_group_time = State()
-    add_group_days = State()
-    add_group_flag = State()
-    add_note = State()
 
 
 @dp.message_handler(lambda m: 'Додати цей чат' in m.text, state='*')
@@ -73,7 +65,7 @@ async def add_chat_to_stream(message: types.Message):
     invite_link = await message.chat.create_invite_link()
     print(message.from_user.id)
 
-    select_chat_to = await store.select_one('users', {'telegram': message.from_user.id}, ('temp_state_1', ))
+    select_chat_to = await store.select_one('users', {'telegram': message.from_user.id}, ('temp_state_1',))
     print("-=-=-=", select_chat_to)
     chat_to = json.loads(select_chat_to['temp_state_1'])
     for chat in chat_to['add_chat_to']:
@@ -96,23 +88,26 @@ async def auth_user_type(message: types.Message):
                 'telegram': message.chat.id,
                 'contact': None,
                 'type': 0,
-                'state': str(EnterStates.login_state.state)
+                'state': str(MainStates.login_state.state)
             }
             await store.insert('users', user)
             logger.info(f"{_getframe().f_code.co_name} | New user added | {user}")
         await bot.send_message(chat, start_text, reply_markup=user_type_kb())
-        await EnterStates.login_state.set()
-        await update_state(message.chat.id, EnterStates.login_state, store)
+        await MainStates.login_state.set()
+        await update_state(message.chat.id, MainStates.login_state, store)
 
-    else:
+    elif int(chat) > 0:
         await bot.send_message(chat, registered_greeting(USER_TYPE.get(curr_user['type'], 0), curr_user['name']),
                                'HTML', reply_markup=await menu_kb(curr_user['type']))
         logger.info(f"{_getframe().f_code.co_name} | Registered user {message.chat.id} start Bot")
         await MainStates.wait_menu_click.set()
         await update_state(message.chat.id, MainStates.wait_menu_click, store)
+    elif int(chat) < 0:
+        if curr_user['type'] == -1:
+            pass
 
 
-@dp.callback_query_handler(state=EnterStates.login_state)
+@dp.callback_query_handler(state=MainStates.login_state)
 async def auth_step_two(call: types.CallbackQuery):
     print('auth_step_two data = ', call.data)
     if call.data == 'turn_back':
@@ -128,25 +123,27 @@ async def auth_step_two(call: types.CallbackQuery):
         pass_msg = await call.message.edit_text(password_request, reply_markup=await back_btn_kb())
 
         await store.update('users', {'telegram': call.message.chat.id}, {'temp_state_2': pass_msg.message_id})
-        await EnterStates.password_state.set()
-        await update_state(call.message.chat.id, EnterStates.password_state, store)
+        await MainStates.password_state.set()
+        await update_state(call.message.chat.id, MainStates.password_state, store)
         await store.update('users', {'telegram': call.message.chat.id}, {'temp_state_1': user_type})
     elif user_type == 3:
+        if call.message.chat.id < 0:
+            return
         await call.message.edit_text(f"Ви увійшли як Учень🤓", reply_markup=await menu_kb(3))
         await store.update('users', {'telegram': call.message.chat.id}, {'type': user_type})
         await MainStates.wait_menu_click.set()
         await update_state(call.message.chat.id, MainStates.wait_menu_click, store)
 
 
-@dp.callback_query_handler(state=EnterStates.password_state)
+@dp.callback_query_handler(state=MainStates.password_state)
 async def from_password(call: types.CallbackQuery):
     if call.data == 'turn_back':
-        await EnterStates.login_state.set()
-        await update_state(call.message.chat.id, EnterStates.login_state, store)
+        await MainStates.login_state.set()
+        await update_state(call.message.chat.id, MainStates.login_state, store)
         await call.message.edit_text(start_text, reply_markup=user_type_kb())
 
 
-@dp.message_handler(state=EnterStates.password_state)
+@dp.message_handler(state=MainStates.password_state)
 async def check_password(message: types.Message):
     print('check_password data = ', message.text)
     passwords = read_config('users_access.json')
@@ -159,18 +156,17 @@ async def check_password(message: types.Message):
         await bot.send_message(message.chat.id, 'Ви увійшли як <b> Чат Адміністраторів</b>', parse_mode='HTML')
         await bot.delete_message(message.chat.id, to_delete['temp_state_2'])
         await store.update('users', {'telegram': message.chat.id}, {'type': -1, 'name': 'AdminChat'})
-        await AdminStates.answer_enroll.set()
-        await update_state(chat_id, AdminStates.answer_enroll, store)
+        await MainStates.answer_enroll.set()
+        await update_state(chat_id, MainStates.answer_enroll, store)
     elif int(user['temp_state_1']) == 1 and message.text == passwords.get('admin', None) and int(chat_id) > 0:
 
-        await bot.send_message(message.chat.id, 'Ви увійшли як <b>Адміністратор</b>', parse_mode='HTML',
-                               reply_markup=await menu_kb(user['type']))
+        await bot.send_message(message.chat.id, 'Ви увійшли як <b>Адміністратор</b>', parse_mode='HTML')
         await bot.delete_message(message.chat.id, to_delete['temp_state_2'])
 
         await store.update('users', {'telegram': message.chat.id}, {'type': 1})
         await MainStates.wait_menu_click.set()
         await update_state(message.chat.id, MainStates.wait_menu_click, store)
-    elif int(user['temp_state_1']) == 2 and message.text == passwords.get('trainer', None):
+    elif int(user['temp_state_1']) == 2 and message.text == passwords.get('trainer', None) and int(chat_id) > 0:
         await bot.send_message(message.chat.id, 'Оберіть себе у списку', parse_mode='HTML',
                                reply_markup=await trainers_kb(store))
         await bot.delete_message(message.chat.id, to_delete['temp_state_2'])
@@ -194,8 +190,8 @@ async def trainer_name_clicked(call: types.CallbackQuery):
     print('trainer_name_clicked data = ', call.data)
     if call.data == 'turn_back':
         await call.message.edit_text(start_text, 'HTML', reply_markup=user_type_kb())
-        await EnterStates.login_state.set()
-        await update_state(call.message.chat.id, EnterStates.login_state, store)
+        await MainStates.login_state.set()
+        await update_state(call.message.chat.id, MainStates.login_state, store)
     else:
         await store.update('users', {'telegram': call.message.chat.id}, {'name': call.data})
         user = await store.select_one('users', {'telegram': int(call.message.chat.id)}, ('id',))
@@ -255,8 +251,8 @@ async def menu_btn_clicked(call: types.CallbackQuery):
         await update_state(chat_id, MainStates.show_contact, store)
 
     if call.data == 'turn_back':
-        await EnterStates.login_state.set()
-        await update_state(chat_id, EnterStates.login_state, store)
+        await MainStates.login_state.set()
+        await update_state(chat_id, MainStates.login_state, store)
         await call.message.edit_text(start_text, reply_markup=user_type_kb())
 
     if call.data == 'enroll_ok':
@@ -299,6 +295,7 @@ async def from_main_menu(call: types.CallbackQuery, state: FSMContext):
             chat_to = ()
 
         if stream:
+            to_kb = list()
             stream_users = list()
             for group in stream:
                 users = await store.select('user_group', {'"group"': group, 'type': 'student'}, ('"user"',))
@@ -306,7 +303,10 @@ async def from_main_menu(call: types.CallbackQuery, state: FSMContext):
             keyboard = InlineKeyboardMarkup()
             for student in stream_users:
                 stream_student = await store.select_one('users', {'id': student["user"]}, ('name',))
-                btn = InlineKeyboardButton(stream_student['name'], callback_data=str(student['user']))
+                to_kb.append((stream_student['name'], student['user']))
+            to_kb = list(set(to_kb))
+            for btn_text, btn_call in to_kb:
+                btn = InlineKeyboardButton(btn_text, callback_data=str(btn_call))
                 keyboard.add(btn)
 
             back_btn = InlineKeyboardButton('⬅️ Назад', callback_data='turn_back')
@@ -415,7 +415,7 @@ async def group_list_request(call: types.CallbackQuery):
     await update_state(chat_id, MainStates.wait_for_group, store)
 
 
-@dp.callback_query_handler(lambda c: 'accept' not in c.data, state=MainStates.wait_for_group)
+@dp.callback_query_handler(state=MainStates.wait_for_group)
 async def group_request(call: types.CallbackQuery, state: FSMContext):
     chat_id = call.message.chat.id
     if call.data == 'turn_back':
@@ -426,7 +426,7 @@ async def group_request(call: types.CallbackQuery, state: FSMContext):
                 await bot.delete_message(chat_id, msg)
             except Exception as ex:
                 logger.warning(f"Skip deleting msg because : {ex}")
-        call.data = int(user['at_category'])
+        call.data = str(user['at_category'])
         print(call.data, type(call.data))
 
         await courses_list_request(call)
@@ -556,7 +556,7 @@ async def client_answer_enroll_message(input_obj: [types.Message, types.Callback
         logger.error(f"Miss input : {type(input_obj)} --> {data}")
 
 
-@dp.callback_query_handler(state=AdminStates.answer_enroll)
+@dp.callback_query_handler(state=MainStates.answer_enroll)
 async def check_client_enroll(call: types.CallbackQuery):
     print('check_client_enroll data = ', call.data)
     data = json.loads(call.data)
@@ -595,9 +595,12 @@ async def check_client_enroll(call: types.CallbackQuery):
     await bot.send_message(call.message.chat.id, admin_service_msg, 'HTML')
 
 
-@dp.callback_query_handler(lambda c: c.data == 'read_push', state='*')
+@dp.callback_query_handler(lambda c: 'read_push' == c.data, state=[None, '*'])
 async def note_was_read(call: types.CallbackQuery):
-    await call.message.delete()
+    try:
+        await call.message.delete()
+    except aiogram.exceptions.MessageToDeleteNotFound as ex:
+        logger.warning(f"Skip deleting msg because : {ex}")
 
 
 async def schedule_push():
@@ -682,19 +685,9 @@ async def check_state_for_user_message(input_obj: types.Message, state: FSMConte
         return
 
     user = await store.select_one('users', {'telegram': chat_id}, ('state',))
-    await state.set_state(user.get('state', EnterStates.login_state.state))
+    await state.set_state(user.get('state', MainStates.login_state.state))
     now_state = await state.get_state()
-    logger.info(f"Got msg: {data} in state {now_state} changed to {user.get('state', EnterStates.login_state.state)}")
-
-
-
-
-# @dp.callback_query_handler(state=None)
-# async def check_state_for_user_callback(call: types.CallbackQuery, state: FSMContext):
-#     user = await store.select_one('users', {'telegram': call.message.chat.id}, ('state',))
-#     await state.set_state(user.get('state', EnterStates.login_state.state))
-#     now_state = await state.get_state()
-#     logger.info(f"Got callback: {call.data} in state {now_state} changed to {user['state']}")
+    logger.info(f"Got msg: {data} in state {now_state} changed to {user.get('state', MainStates.login_state.state)}")
 
 
 def repeat(coroutine, curr_loop):
@@ -724,7 +717,14 @@ if __name__ == "__main__":
         logger.error(
             f"{_getframe().f_code.co_name}: Expected tables doesnt match: {existing_tables[1]} "
             f"from {database_config.get('expected_tables')} ")
-        exit()
+
+        store.create_tables()
+        existing_tables = store.check_existence()
+        if not existing_tables[0]:
+            logger.error(
+                f"{_getframe().f_code.co_name}: Expected tables doesnt match: {existing_tables[1]} "
+                f"from {database_config.get('expected_tables')} ")
+            exit()
 
     commands = [types.BotCommand(command="/start", description="Початок спілкування с ботом"), ]
     loop = asyncio.get_event_loop()

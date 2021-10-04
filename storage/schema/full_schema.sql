@@ -67,14 +67,31 @@ CREATE TABLE IF NOT EXISTS user_group (
 );
 
 
+CREATE TABLE IF NOT EXISTS user_login (
+
+    id         serial
+        constraint user_login_pkey
+            primary key,
+    first_name varchar(100),
+    last_name  varchar(100),
+    login      varchar(80)
+        constraint user_login_login_key
+            unique,
+    email      varchar(120),
+    password   varchar(255)
+);
 
 
-ALTER TABLE "courses" ADD CONSTRAINT "courses_fk0" FOREIGN KEY ("category") REFERENCES "categories"("id") ON UPDATE CASCADE ON DELETE CASCADE ;
+ALTER TABLE "courses" DROP CONSTRAINT IF EXISTS "courses_fk0";
+ALTER TABLE "courses" ADD CONSTRAINT  "courses_fk0" FOREIGN KEY ("category") REFERENCES "categories"("id") ON UPDATE CASCADE ON DELETE CASCADE;
 
+ALTER TABLE "groups" DROP CONSTRAINT IF EXISTS "groups_fk0";
 ALTER TABLE "groups" ADD CONSTRAINT "groups_fk0" FOREIGN KEY ("course") REFERENCES "courses"("id") ON UPDATE CASCADE ON DELETE CASCADE ;
 
+ALTER TABLE "user_group" DROP CONSTRAINT IF EXISTS "user_group_fk0";
 ALTER TABLE "user_group" ADD CONSTRAINT "user_group_fk0" FOREIGN KEY ("user") REFERENCES "users"("id");
 
+ALTER TABLE "user_group" DROP CONSTRAINT IF EXISTS "user_group_fk1";
 ALTER TABLE "user_group" ADD CONSTRAINT "user_group_fk1" FOREIGN KEY ("group") REFERENCES "groups"("id");
 
 
