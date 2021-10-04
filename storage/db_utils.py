@@ -1,11 +1,7 @@
-import logging
 import psycopg2
-from utils import read_config, ROOT_DIR, set_logger
+from utils import read_config, set_logger
 from sys import intern, _getframe
-import logging
 from typing import (Any, Dict, List, Iterable, )
-
-# Callable, Iterator, Optional,Tuple,TypeVar,cast, overload,
 
 config = read_config('database.json')
 logger = set_logger('database')
@@ -37,12 +33,17 @@ class DataStore:
                 tables = [table[0] for table in tables]
                 return (True, tables) if set(tables) == expected_tables else (False, tables)
             except Exception as err:
-                print(err)
                 logger.info(f"{_getframe().f_code.co_name}: {err}")
                 return list()
 
-    def is_update(self):
-        ...
+    def create_tables(self):
+        with self.cursor as cursor:
+            try:
+                cursor.execute(open("storage/schema/full_schema.sql", "r").read())
+                logger.info(f"=== Tables created ===")
+            except Exception as err:
+                logger.info(f"{_getframe().f_code.co_name}: {err}")
+                return list()
 
     async def select(self, table, keyvalues: [Dict[str, Any]], columns: Iterable[str]) -> List[Dict[str, Any]]:
         if keyvalues:
@@ -94,11 +95,14 @@ class DataStore:
                 return True
             except psycopg2.DatabaseError as err:
                 if err.pgcode == '23505':
-                    logger.warning(f"{_getframe().f_back.f_code.co_name} --> {_getframe().f_code.co_name} Skip ")
-                logger.error(f"{_getframe().f_back.f_code.co_name} --> {_getframe().f_code.co_name}: DB Error {err}|  {vals}")
+                    logger.warning(
+                        f"{_getframe().f_back.f_code.co_name} --> {_getframe().f_code.co_name}"
+                        f" Skip insert cuause 23505 err code ")
+                logger.error(
+                    f"{_getframe().f_back.f_code.co_name} --> {_getframe().f_code.co_name}: DB Error {err}|  {vals}")
             except Exception as err:
                 logger.error(f"{_getframe().f_back.f_code.co_name} --> {_getframe().f_code.co_name}: "
-                             f"{type(err)=} | {err=} |  {vals=}")
+                             f"{err=} |  {vals=}")
                 return False
 
     async def delete(self, table: str, keyvalues: Dict[str, Any]) -> bool:
@@ -163,7 +167,7 @@ class DataStore:
         def __enter__(self):
             self.cursor = self.db.cursor()
             return self.cursor
-        
+
         def __exit__(self, exc_type, exc_val, exc_tb):
             self.db.commit()
             self.cursor.close()
