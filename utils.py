@@ -47,7 +47,7 @@ def set_logger(logger_name) -> logging.Logger:
     # Add handlers to the logger
     logger.addHandler(c_handler)
     logger.addHandler(f_handler)
-
+    logger.info(f"Write to {f_handler}")
     return logger
 
 

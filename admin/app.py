@@ -59,6 +59,8 @@ class Category(db.Model):
 
 
 class CategoryView(ModelView):
+    column_list = ('id', 'name')
+
     def is_accessible(self):
         return login.current_user.is_authenticated
 
@@ -80,8 +82,8 @@ class Course(db.Model):
 
 class CourseView(ModelView):
     column_list = ('id', 'name', 'trainer', 'price', 'description', 'category',)
-    column_sortable_list = ('price', 'category')
-    column_searchable_list = ('trainer', 'category', 'name')
+    column_sortable_list = ('id', 'price', 'category')
+    column_searchable_list = ('id', 'trainer', 'category', 'name')
 
     def on_model_change(self, form, model, is_created):
         try:
@@ -127,10 +129,10 @@ class Group(db.Model):
 
 
 class GroupView(ModelView):
-    column_list = ('stream', 'day', 'time', 'type', 'course')
+    column_list = ('id', 'stream', 'day', 'time', 'type', 'course')
     form_excluded_columns = ('program_day', 'chat')
-    column_searchable_list = ('course', 'day')
-    column_sortable_list = ('stream', 'day', 'time', 'type', 'course')
+    column_searchable_list = ('id', 'course', 'day')
+    column_sortable_list = ('id', 'stream', 'day', 'time', 'type', 'course')
     form_choices = {
         'day': [
             ('Понеділок', 'Понеділок'), ('Вівторок', 'Вівторок'),
@@ -177,7 +179,8 @@ class User(db.Model):
 
 
 class UserView(ModelView):
-    column_list = ('name', 'nickname', 'contact', 'type',)
+    column_list = ('id', 'name', 'nickname', 'contact', 'type',)
+    column_editable_list = ('name', 'nickname', 'contact', 'type')
     form_columns = ('name', 'nickname', 'contact', 'type',)
     column_sortable_list = ('name', 'nickname', 'contact', 'type',)
     column_searchable_list = ('name', 'nickname', 'contact', 'type')

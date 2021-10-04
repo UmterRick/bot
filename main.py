@@ -63,15 +63,12 @@ class MainStates(StatesGroup):
 @dp.message_handler(lambda m: 'Додати цей чат' in m.text, state='*')
 async def add_chat_to_stream(message: types.Message):
     invite_link = await message.chat.create_invite_link()
-    print(message.from_user.id)
 
     select_chat_to = await store.select_one('users', {'telegram': message.from_user.id}, ('temp_state_1',))
-    print("-=-=-=", select_chat_to)
     chat_to = json.loads(select_chat_to['temp_state_1'])
     for chat in chat_to['add_chat_to']:
         await store.update('groups', {'id': chat}, {'chat': invite_link.invite_link})
-
-    print("CHECK DATABASE")
+        logger.info(f"New chat for {chat}: {invite_link.invite_link} ")
 
 
 @dp.message_handler(commands='start', state='*')
@@ -109,7 +106,6 @@ async def auth_user_type(message: types.Message):
 
 @dp.callback_query_handler(state=MainStates.login_state)
 async def auth_step_two(call: types.CallbackQuery):
-    print('auth_step_two data = ', call.data)
     if call.data == 'turn_back':
         pass
     try:
@@ -126,6 +122,8 @@ async def auth_step_two(call: types.CallbackQuery):
         await MainStates.password_state.set()
         await update_state(call.message.chat.id, MainStates.password_state, store)
         await store.update('users', {'telegram': call.message.chat.id}, {'temp_state_1': user_type})
+        logger.info(f"User {call.from_user.full_name} try to enter as {'Admin' if user_type == 1 else 'Trainer'}")
+
     elif user_type == 3:
         if call.message.chat.id < 0:
             return
@@ -133,6 +131,7 @@ async def auth_step_two(call: types.CallbackQuery):
         await store.update('users', {'telegram': call.message.chat.id}, {'type': user_type})
         await MainStates.wait_menu_click.set()
         await update_state(call.message.chat.id, MainStates.wait_menu_click, store)
+        logger.info(f"User {call.from_user.full_name} enter as Учень")
 
 
 @dp.callback_query_handler(state=MainStates.password_state)
@@ -145,7 +144,6 @@ async def from_password(call: types.CallbackQuery):
 
 @dp.message_handler(state=MainStates.password_state)
 async def check_password(message: types.Message):
-    print('check_password data = ', message.text)
     passwords = read_config('users_access.json')
     passwords = passwords.get('passwords', {})
     chat_id = message.chat.id
@@ -158,6 +156,7 @@ async def check_password(message: types.Message):
         await store.update('users', {'telegram': message.chat.id}, {'type': -1, 'name': 'AdminChat'})
         await MainStates.answer_enroll.set()
         await update_state(chat_id, MainStates.answer_enroll, store)
+        logger.info(f"User {message.from_user.full_name} auth in AdminChat")
     elif int(user['temp_state_1']) == 1 and message.text == passwords.get('admin', None) and int(chat_id) > 0:
 
         await bot.send_message(message.chat.id, 'Ви увійшли як <b>Адміністратор</b>', parse_mode='HTML')
@@ -166,6 +165,8 @@ async def check_password(message: types.Message):
         await store.update('users', {'telegram': message.chat.id}, {'type': 1})
         await MainStates.wait_menu_click.set()
         await update_state(message.chat.id, MainStates.wait_menu_click, store)
+        logger.info(f"User {message.from_user.full_name} auth as Admin")
+
     elif int(user['temp_state_1']) == 2 and message.text == passwords.get('trainer', None) and int(chat_id) > 0:
         await bot.send_message(message.chat.id, 'Оберіть себе у списку', parse_mode='HTML',
                                reply_markup=await trainers_kb(store))
@@ -174,6 +175,8 @@ async def check_password(message: types.Message):
         await store.update('users', {'telegram': message.chat.id}, {'type': 2})
         await MainStates.choose_trainer.set()
         await update_state(message.chat.id, MainStates.choose_trainer, store)
+        logger.info(f"User {message.from_user.full_name} choose trainer name")
+
     else:
         to_delete = await store.select_one('users', {'telegram': message.chat.id}, ('temp_state_2',))
         try:
@@ -183,11 +186,11 @@ async def check_password(message: types.Message):
         pass_msg = await bot.send_message(message.chat.id, 'Невірний пароль, спробуйте ще раз!',
                                           reply_markup=await back_btn_kb())
         await store.update('users', {'telegram': message.chat.id}, {'temp_state_2': pass_msg.message_id})
+        logger.info(f"User {message.from_user.full_name} input wrong password")
 
 
 @dp.callback_query_handler(state=MainStates.choose_trainer)
 async def trainer_name_clicked(call: types.CallbackQuery):
-    print('trainer_name_clicked data = ', call.data)
     if call.data == 'turn_back':
         await call.message.edit_text(start_text, 'HTML', reply_markup=user_type_kb())
         await MainStates.login_state.set()
@@ -212,20 +215,22 @@ async def trainer_name_clicked(call: types.CallbackQuery):
         await call.message.edit_text('<b> 📜 Головне Меню 📜 </b> ', parse_mode='HTML', reply_markup=await menu_kb(2))
         await MainStates.wait_menu_click.set()
         await update_state(call.message.chat.id, MainStates.wait_menu_click, store)
+        logger.info(f"User {call.from_user.full_name} auth as Trainer: {call.data}")
 
 
 @dp.callback_query_handler(state=MainStates.wait_menu_click)
 async def menu_btn_clicked(call: types.CallbackQuery):
-    print('menu_btn_clicked data = ', call.data)
-
     chat_id = call.message.chat.id
 
     if call.data == 'all_courses':
+        logger.info(f"User {call.from_user.full_name} viewing categories")
         await call.message.edit_text('Оберіть категорію курсів:', reply_markup=await topic_kb(store))
         await MainStates.wait_for_category.set()
         await update_state(chat_id, MainStates.wait_for_category, store)
 
     if call.data == 'my_course' or call.data == 'trainer_course':
+        logger.info(f"User {call.from_user.full_name} viewing users courses")
+
         user = await store.select_one('users', {'telegram': chat_id}, ('type', 'id', 'name'))
         to_send = await my_courses(store, user)
         temp_msgs = list()
@@ -245,6 +250,8 @@ async def menu_btn_clicked(call: types.CallbackQuery):
         await update_state(chat_id, MainStates.show_my_courses, store)
 
     if call.data == 'contacts':
+        logger.info(f"User {call.from_user.full_name} viewing contacts")
+
         await call.message.edit_text('Наші контакти :', reply_markup=contact_kb())
 
         await MainStates.show_contact.set()
@@ -255,13 +262,9 @@ async def menu_btn_clicked(call: types.CallbackQuery):
         await update_state(chat_id, MainStates.login_state, store)
         await call.message.edit_text(start_text, reply_markup=user_type_kb())
 
-    if call.data == 'enroll_ok':
-        await call.message.delete()
-
 
 @dp.callback_query_handler(state=[MainStates.show_contact, MainStates.show_my_courses])
 async def from_main_menu(call: types.CallbackQuery, state: FSMContext):
-    print(f'from main menu data = {call.data}', await state.get_state())
     chat_id = call.message.chat.id
     call_user = await store.select_one('users', {'telegram': chat_id}, ('type', 'id', 'name'))
     if call.data == 'turn_back':
@@ -284,6 +287,8 @@ async def from_main_menu(call: types.CallbackQuery, state: FSMContext):
         await update_state(chat_id, MainStates.wait_menu_click, store)
         return
     if await state.get_state() == MainStates.show_my_courses.state:
+        logger.info(f"User {call.from_user.full_name} viewing groups students")
+
         try:
             await store.update('users', {'telegram': chat_id}, {'temp_state_2': call.data})
             data = json.loads(call.data)
@@ -320,7 +325,10 @@ async def from_main_menu(call: types.CallbackQuery, state: FSMContext):
             await call.message.edit_text('Студенти групи', reply_markup=keyboard)
             await MainStates.students_list.set()
             await update_state(chat_id, MainStates.students_list, store)
+
         elif chat_to:
+            logger.info(f"User {call.from_user.full_name} want add chat to group")
+
             to_delete = await store.select_one('users', {'telegram': chat_id}, ('temp_state_1',))
             to_delete = json.loads(to_delete['temp_state_1'])
             for msg in to_delete:
@@ -329,11 +337,11 @@ async def from_main_menu(call: types.CallbackQuery, state: FSMContext):
                         await bot.delete_message(chat_id, msg)
                     except aiogram.utils.exceptions.MessageToDeleteNotFound as ex:
                         logger.warning(f"Skip message when delete: {ex}")
-            print(f"SET CHAT to {chat_to}")
             await store.update('users', {'telegram': chat_id}, {'temp_state_1': call.data})
             await call.message.edit_text(trainer_manual, parse_mode='HTML', reply_markup=add_chat_kb())
 
     if await state.get_state() == MainStates.show_contact.state:
+        logger.info(f"User {call.from_user.full_name} viewing phone numbers")
         config = read_config("contacts.json")
         if call.data == 'phone1':
             await bot.answer_callback_query(call.id, config["phone1"], True)
@@ -343,7 +351,7 @@ async def from_main_menu(call: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(state=MainStates.wait_for_category)
 async def courses_list_request(call: types.CallbackQuery):
-    print('courses_list_request ', call.data)
+    logger.info(f"User {call.from_user.full_name} viewing courses on category {call.data}")
     chat_id = call.message.chat.id
     if call.data == 'turn_back':
 
@@ -384,7 +392,8 @@ async def courses_list_request(call: types.CallbackQuery):
 
 @dp.callback_query_handler(state=MainStates.wait_for_course)
 async def group_list_request(call: types.CallbackQuery):
-    print('group_list_request ', call.data)
+    logger.info(f"User {call.from_user.full_name} viewing groups on course id = {call.data}")
+
     chat_id = call.message.chat.id
 
     to_delete = await store.select_one('users', {'telegram': chat_id}, ('temp_state_1',))
@@ -416,7 +425,9 @@ async def group_list_request(call: types.CallbackQuery):
 
 
 @dp.callback_query_handler(state=MainStates.wait_for_group)
-async def group_request(call: types.CallbackQuery, state: FSMContext):
+async def group_request(call: types.CallbackQuery):
+    logger.info(f"User {call.from_user.full_name} viewing group info ")
+
     chat_id = call.message.chat.id
     if call.data == 'turn_back':
         user = await store.select_one('users', {'telegram': chat_id}, ('temp_state_2', 'at_category'))
@@ -427,19 +438,15 @@ async def group_request(call: types.CallbackQuery, state: FSMContext):
             except Exception as ex:
                 logger.warning(f"Skip deleting msg because : {ex}")
         call.data = str(user['at_category'])
-        print(call.data, type(call.data))
-
         await courses_list_request(call)
         return
 
     data = json.loads(call.data)
-    print(f"wait_for_group {await state.get_state()} || {data}")
     if isinstance(data, Iterable):
         course_id, stream_id, request_type = data
     else:
         logger.error(f"Got wrong callback from user {chat_id}, wait iterable, got {call.data} instead")
         return
-    print(f'group data {course_id=} | {stream_id=} | {request_type=}')
 
     if request_type == 'enroll':
         stream_info = call.message.text
@@ -469,12 +476,12 @@ async def group_request(call: types.CallbackQuery, state: FSMContext):
         await store.update('users', {'telegram': chat_id}, {'temp_state_2': json.dumps([course_id, stream_id])})
         await MainStates.wait_for_client_answer.set()
         await update_state(chat_id, MainStates.wait_for_client_answer, store)
-        return
 
 
 @dp.callback_query_handler(state=MainStates.students_list)
 async def student_clicked(call: types.CallbackQuery):
-    print('student_clicked  data :', call.data)
+    logger.info(f"User {call.from_user.full_name} viewing student info student id = {call.data}")
+
     chat_id = call.message.chat.id
     if 'turn_back' in call.data:
         call.data = 'trainer_course'
@@ -491,7 +498,8 @@ async def student_clicked(call: types.CallbackQuery):
 @dp.callback_query_handler(state=MainStates.wait_for_client_answer)
 @dp.message_handler(content_types=['text', 'contact'], state=MainStates.wait_for_client_answer)
 async def client_answer_enroll_message(input_obj: [types.Message, types.CallbackQuery]):
-    print('client_answer_enroll message = ', 'm: ', input_obj)
+    logger.info(f"User {input_obj.from_user.full_name} accept or decline enroll sending")
+
     if isinstance(input_obj, types.CallbackQuery):
         chat_id = input_obj.message.chat.id
         data = json.loads(input_obj.data)
@@ -542,7 +550,7 @@ async def client_answer_enroll_message(input_obj: [types.Message, types.Callback
             await bot.send_message(migration.migrate_to_chat_id, enroll_msg, 'HTML', reply_markup=keyboard)
 
         except Exception as ex:
-            print("**" * 30, type(ex), ex)
+            logger.warning(f"Cannot get user profile photo for enroll creating... Sending without photo {ex}")
             await bot.send_message(admin_chat, enroll_msg, 'HTML', reply_markup=keyboard)
 
         await bot.delete_message(chat_id, int(user['temp_state_1']))
@@ -558,17 +566,15 @@ async def client_answer_enroll_message(input_obj: [types.Message, types.Callback
 
 @dp.callback_query_handler(state=MainStates.answer_enroll)
 async def check_client_enroll(call: types.CallbackQuery):
-    print('check_client_enroll data = ', call.data)
+    logger.info(f"Admin {call.from_user.full_name} answer to user enroll")
+
     data = json.loads(call.data)
     from_user_id = data['u']
     to_groups = data['g']
     status = data['s']
 
-    print(f"{from_user_id=}, {to_groups=}, {status=}")
-    print(call.message.__dict__)
     enroll_text = call.message.caption
     user = await store.select_one('users', {'id': from_user_id}, ('id', 'nickname', 'telegram'))
-    print(f"{user=}")
     keyboard = InlineKeyboardMarkup().row(InlineKeyboardButton('OK', callback_data='read_push'))
     pattern = 'Заявка подана на:'
     start_from = enroll_text.find(pattern)
@@ -580,6 +586,8 @@ async def check_client_enroll(call: types.CallbackQuery):
                                f'\n <b>✅ПРИЙНЯТО✅</b>'
         admin_service_msg = f" ✅\n{call.from_user.full_name} <b>ПІДТВЕРДИВ(ЛА)</b> заявку від\n" \
                             f"🎓 @{user['nickname']}\n🔵 <b>{course_name}</b>"
+        logger.info(f"User {call.from_user.full_name} ACCEPT {user['nickname']} enroll")
+
 
     else:
         for group in to_groups:
@@ -590,6 +598,8 @@ async def check_client_enroll(call: types.CallbackQuery):
 
         admin_service_msg = f"❌\n{call.from_user.full_name} <b>ВІДХИЛИВ(ЛА)</b> заявку від\n" \
                             f"🎓 @{user['nickname']}\n🔵 <b>{course_name}</b>"
+        logger.info(f"User {call.from_user.full_name} DECLINE {user['nickname']} enroll")
+
     await call.message.delete()
     await bot.send_message(user['telegram'], client_enroll_answer, 'HTML', reply_markup=keyboard)
     await bot.send_message(call.message.chat.id, admin_service_msg, 'HTML')
@@ -624,10 +634,13 @@ async def schedule_push():
         if today in (lesson_day, day_before_lesson):
             group_datetime = datetime.now().replace(hour=group_data['time'].hour, minute=group_data['time'].minute)
             if today == day_before_lesson:
+                logger.info(f"*** Tomorrow is lesson in {group} group")
+
                 tomorrow = datetime.now() + timedelta(days=1)
                 delta = group_datetime - tomorrow if group_datetime < tomorrow else tomorrow - group_datetime
                 if delta.seconds < 10 * 60:
-
+                    logger.info(f"*** Now - LessonTime < 10 min")
+                    logger.info(f"*** START sending notifications")
                     group_users = await store.select("user_group", {'"group"': group}, ('"user"',))
                     group_users = [row['user'] for row in group_users]
                     for user in group_users:
@@ -638,19 +651,26 @@ async def schedule_push():
                         if push < 0:
                             user_data = await store.select_one('users', {'id': user}, ('telegram',))
                             user_chat = user_data['telegram']
+                            logger.info(f"*** Sending push to user id = {user}")
                             await bot.send_message(user_chat, first_push(course_name), reply_markup=push_keyboard())
                     await store.update('user_group', {'"group"': group}, {'push': 1})
+                    logger.info(f"*** SET push as SEND")
+                    logger.info(f"*** FINISH sending notifications")
 
                 elif 40 * 60 > delta.seconds > 15 * 60:
                     await store.update('user_group', {'"group"': group}, {'push': -1})
+                    logger.info(f"*** SET push as WAITING")
+
             elif today == lesson_day:
+                logger.info(f"*** Today is Lesson in group id = {group}")
+
                 delta = group_datetime - now if group_datetime < now else now - group_datetime
-                print(f"TODAY {delta.seconds=}")
 
                 if delta.seconds < 2.5 * 60 * 60:
+                    logger.info(f"*** Now - LessonTime < 10 min")
+                    logger.info(f"*** START sending notifications")
                     group_users = await store.select("user_group", {'"group"': group}, ('"user"',))
                     group_users = [row['user'] for row in group_users]
-                    print(f"CHECK TO SEND TODAY PUSH {group_users}")
                     for user in group_users:
                         row = await store.select_one("user_group",
                                                      {'"user"': user, '"group"': group, 'type': 'student'},
@@ -659,14 +679,16 @@ async def schedule_push():
                         if push < 0:
                             user_data = await store.select_one('users', {'id': user}, ('telegram',))
                             user_chat = user_data['telegram']
+                            logger.info(f"*** Sending push to user id = {user}")
+
                             await bot.send_message(user_chat, second_push(course_name), reply_markup=push_keyboard())
-                            print(f"SEND SECOND NOTIFICATION  TO {user_chat}")
                     await store.update('user_group', {'"group"': group}, {'push': 1})
-                    print("TODAY SET AS SENT")
-                    print()
+                    logger.info(f"*** SET push as SEND")
+                    logger.info(f"*** FINISH sending notifications")
+
                 elif 3.5 * 60 * 60 > delta.seconds > 3 * 60 * 60:
                     await store.update('user_group', {'"group"': group}, {'push': -1})
-                    print("SET TODAY NOTIFICATION IN WAIT ")
+                    logger.info(f"*** SET push as WAITING")
 
 
 @dp.callback_query_handler(state=None)
@@ -692,7 +714,7 @@ async def check_state_for_user_message(input_obj: types.Message, state: FSMConte
 
 def repeat(coroutine, curr_loop):
     asyncio.ensure_future(coroutine(), loop=curr_loop)
-    curr_loop.call_later(20, repeat, coroutine, curr_loop)
+    curr_loop.call_later(600, repeat, coroutine, curr_loop)
 
 
 async def on_startup(dispatcher):  # there was dispatcher in args
@@ -702,7 +724,7 @@ async def on_startup(dispatcher):  # there was dispatcher in args
 
 async def on_shutdown(dispatcher):
     logging.warning('Shutting down..')
-
+    logger.info("===== SHUTDOWN BOT ====")
     await bot.delete_webhook()
     await dispatcher.storage.close()
     await dispatcher.storage.wait_closed()
