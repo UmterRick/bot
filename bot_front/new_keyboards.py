@@ -108,10 +108,10 @@ async def my_courses(store, user):
     send = {}
     await update_user_group(store)
     if user['type'] == 2:
-        groups = await store.select('"user_group"', {'"user"': user['id'], 'type': 'trainer'}, ('"group"',))
+        groups = await store.select('"user_group"', {'"user_id"': user['id'], 'type': 'trainer'}, ('"group_id"',))
         data = {}
         for group in groups:
-            group_info = await store.select_one('groups', {'id': group['group']},
+            group_info = await store.select_one('groups', {'id': group['group_id']},
                                                 ('id', 'stream', 'day', 'time', 'type', 'course', 'chat'))
             course = await store.select_one('courses', {'id': group_info['course']}, ('name', 'id', 'trainer'))
             trainers = json.loads(course['trainer'])
@@ -149,11 +149,12 @@ async def my_courses(store, user):
 
         return send
     if user['type'] == 3:
-        groups = await store.select('"user_group"', {'"user"': user['id'], 'type': 'student'}, ('"group"',))
+        contacts = read_config('contacts.json')
+        groups = await store.select('"user_group"', {'"user_id"': user['id'], 'type': 'student'}, ('"group_id"',))
         data = {}
 
         for group in groups:
-            group_info = await store.select_one('groups', {'id': group['group']},
+            group_info = await store.select_one('groups', {'id': group['group_id']},
                                                 ('id', 'stream', 'day', 'time', 'type', 'course', 'chat'))
             course = await store.select_one('courses', {'id': group_info['course']}, ('name', 'id', 'trainer'))
             print(f"------- {group_info}, {course} ----------")
@@ -175,12 +176,13 @@ async def my_courses(store, user):
             for st, gr in stream.items():
                 g_msg = ""
                 keyboard = InlineKeyboardMarkup()
-                btn1 = InlineKeyboardButton(text="", url="")
+                btn1 = InlineKeyboardButton(text="", url="google.com")
                 for info in gr:
                     print(f"*********** {info}")
                     gr_type = '🌐 Online' if info[2] else '🏠 Offline'
                     g_msg += f"📅{info[0]}  🕒{info[1].strftime('%H:%M')} {gr_type}\n"
-                    btn1 = InlineKeyboardButton("Чат групи", url=info[4])
+                    url = info[4] if info[4] is not None else contacts.get('telegram', 'google.com')
+                    btn1 = InlineKeyboardButton("Чат групи", url=url)
                 keyboard.add(btn1)
                 send[key]['groups'].append((g_msg, keyboard))
 

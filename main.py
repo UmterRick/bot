@@ -206,8 +206,8 @@ async def trainer_name_clicked(call: types.CallbackQuery):
                 groups = await store.select('groups', {'course': course['id']}, ('id',))
                 for group in groups:
                     relations = {
-                        '"user"': user['id'],
-                        '"group"': group['id'],
+                        '"user_id"': user['id'],
+                        '"group_id"': group['id'],
                         '"type"': 'trainer'
                     }
                     await store.insert('user_group', relations)
@@ -303,12 +303,12 @@ async def from_main_menu(call: types.CallbackQuery, state: FSMContext):
             to_kb = list()
             stream_users = list()
             for group in stream:
-                users = await store.select('user_group', {'"group"': group, 'type': 'student'}, ('"user"',))
+                users = await store.select('user_group', {'"group_id"': group, 'type': 'student'}, ('"user_id"',))
                 stream_users += users
             keyboard = InlineKeyboardMarkup()
             for student in stream_users:
-                stream_student = await store.select_one('users', {'id': student["user"]}, ('name',))
-                to_kb.append((stream_student['name'], student['user']))
+                stream_student = await store.select_one('users', {'id': student["user_id"]}, ('name',))
+                to_kb.append((stream_student['name'], student['user_id']))
             to_kb = list(set(to_kb))
             for btn_text, btn_call in to_kb:
                 btn = InlineKeyboardButton(btn_text, callback_data=str(btn_call))
@@ -540,7 +540,7 @@ async def client_answer_enroll_message(input_obj: [types.Message, types.Callback
         enroll_to_groups = await store.select('groups', {'stream': stream_id, 'course': course_id}, ('id',))
         enroll_to_groups = [group['id'] for group in enroll_to_groups]
         for group in enroll_to_groups:
-            await store.insert('user_group', {'"user"': user['id'], '"group"': group, 'type': 'enroll'})
+            await store.insert('user_group', {'"user_id"': user['id'], '"group_id"': group, 'type': 'enroll'})
         keyboard = await admin_enroll_kb(user, enroll_to_groups)
         try:
             profile_photos = await input_obj.from_user.get_profile_photos(None, 1)
@@ -581,7 +581,7 @@ async def check_client_enroll(call: types.CallbackQuery):
     course_name = enroll_text[start_from + len(pattern):]
     if status:
         for group in to_groups:
-            await store.update('user_group', {'"user"': user['id'], '"group"': group}, {'type': 'student'})
+            await store.update('user_group', {'"user_id"': user['id'], '"group_id"': group}, {'type': 'student'})
         client_enroll_answer = f'Ваш запит на зарахування: \n {course_name}\n ' \
                                f'\n <b>✅ПРИЙНЯТО✅</b>'
         admin_service_msg = f" ✅\n{call.from_user.full_name} <b>ПІДТВЕРДИВ(ЛА)</b> заявку від\n" \
@@ -591,7 +591,7 @@ async def check_client_enroll(call: types.CallbackQuery):
 
     else:
         for group in to_groups:
-            await store.delete('user_group', {'"user"': user['id'], '"group"': group})
+            await store.delete('user_group', {'"user_id"': user['id'], '"group_id"': group})
         client_enroll_answer = f'Ваш запит на зарахування: \n {course_name}\n ' \
                                f"\n<b>❎ВІДХИЛЕНО❎</b>" \
                                f"\nЯкщо, у вас є запитання обреіть зручний вам спосіб зв'язку із нами у 'Контактах'"
@@ -618,8 +618,8 @@ async def schedule_push():
     now = datetime.now()
 
     today = now.strftime("%A")
-    users_groups = await store.select('user_group', {'type': 'student'}, ('"user"', '"group"', 'push'))
-    groups = list(set([item['group'] for item in users_groups]))
+    users_groups = await store.select('user_group', {'type': 'student'}, ('"user_id"', '"group_id"', 'push'))
+    groups = list(set([item['group_id'] for item in users_groups]))
     for group in groups:
 
         group_data = await store.select_one('groups', {'id': group}, ('program_day', 'time', 'course'))
@@ -641,11 +641,11 @@ async def schedule_push():
                 if delta.seconds < 10 * 60:
                     logger.info(f"*** Now - LessonTime < 10 min")
                     logger.info(f"*** START sending notifications")
-                    group_users = await store.select("user_group", {'"group"': group}, ('"user"',))
-                    group_users = [row['user'] for row in group_users]
+                    group_users = await store.select("user_group", {'"group_id"': group}, ('"user_id"',))
+                    group_users = [row['user_id'] for row in group_users]
                     for user in group_users:
                         row = await store.select_one("user_group",
-                                                     {'"user"': user, '"group"': group, 'type': 'student'},
+                                                     {'"user_id"': user, '"group_id"': group, 'type': 'student'},
                                                      ('push',))
                         push = row['push']
                         if push < 0:
@@ -653,12 +653,12 @@ async def schedule_push():
                             user_chat = user_data['telegram']
                             logger.info(f"*** Sending push to user id = {user}")
                             await bot.send_message(user_chat, first_push(course_name), reply_markup=push_keyboard())
-                    await store.update('user_group', {'"group"': group}, {'push': 1})
+                    await store.update('user_group', {'"group_id"': group}, {'push': 1})
                     logger.info(f"*** SET push as SEND")
                     logger.info(f"*** FINISH sending notifications")
 
                 elif 40 * 60 > delta.seconds > 15 * 60:
-                    await store.update('user_group', {'"group"': group}, {'push': -1})
+                    await store.update('user_group', {'"group_id"': group}, {'push': -1})
                     logger.info(f"*** SET push as WAITING")
 
             elif today == lesson_day:
@@ -669,11 +669,11 @@ async def schedule_push():
                 if delta.seconds < 2.5 * 60 * 60:
                     logger.info(f"*** Now - LessonTime < 10 min")
                     logger.info(f"*** START sending notifications")
-                    group_users = await store.select("user_group", {'"group"': group}, ('"user"',))
-                    group_users = [row['user'] for row in group_users]
+                    group_users = await store.select("user_group", {'"group_id"': group}, ('"user_id"',))
+                    group_users = [row['user_id'] for row in group_users]
                     for user in group_users:
                         row = await store.select_one("user_group",
-                                                     {'"user"': user, '"group"': group, 'type': 'student'},
+                                                     {'"user_id"': user, '"group_id"': group, 'type': 'student'},
                                                      ('push',))
                         push = row['push']
                         if push < 0:
@@ -682,12 +682,12 @@ async def schedule_push():
                             logger.info(f"*** Sending push to user id = {user}")
 
                             await bot.send_message(user_chat, second_push(course_name), reply_markup=push_keyboard())
-                    await store.update('user_group', {'"group"': group}, {'push': 1})
+                    await store.update('user_group', {'"group_id"': group}, {'push': 1})
                     logger.info(f"*** SET push as SEND")
                     logger.info(f"*** FINISH sending notifications")
 
                 elif 3.5 * 60 * 60 > delta.seconds > 3 * 60 * 60:
-                    await store.update('user_group', {'"group"': group}, {'push': -1})
+                    await store.update('user_group', {'"group_id"': group}, {'push': -1})
                     logger.info(f"*** SET push as WAITING")
 
 
@@ -752,8 +752,7 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(bot.set_my_commands(commands))
     loop.run_until_complete(get_content(store))
-    loop.run_until_complete(schedule_push())
-    # loop.call_later(10, repeat, job, loop)
+    loop.call_later(600, repeat, schedule_push, loop)
     start_webhook(
         dispatcher=dp,
         webhook_path=WEBHOOK_PATH,

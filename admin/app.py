@@ -1,11 +1,9 @@
-import datetime
 import json
 from flask import url_for, redirect, render_template, request
 from flask_admin.contrib import sqla
 from flask import Flask
 from flask_admin.form import fields, rules
 from flask_admin.contrib.fileadmin import FileAdmin
-from flask_admin.contrib.fileadmin.s3 import S3FileAdmin
 from flask_admin.contrib.sqla import ModelView
 
 from flask_admin.model import typefmt
@@ -18,7 +16,6 @@ from flask_babelex import Babel
 from flask_sqlalchemy import SQLAlchemy
 from wtforms import form, fields, validators
 from utils import week_days_translate, ROOT_DIR
-import os
 
 app = Flask(__name__)
 
@@ -72,6 +69,7 @@ class Course(db.Model):
     name = db.Column(String(255))
     trainer = db.Column(String(255))
     description = db.Column(String(255))
+    link = db.Column(String(255))
     price = db.Column(db.Integer)
     category = db.Column(Integer, ForeignKey('categories.id', ondelete='CASCADE', onupdate='CASCADE'))
     groups = db.relationship('Group', backref='Course', lazy='dynamic')
@@ -81,7 +79,7 @@ class Course(db.Model):
 
 
 class CourseView(ModelView):
-    column_list = ('id', 'name', 'trainer', 'price', 'description', 'category',)
+    column_list = ('id', 'name', 'trainer', 'link', 'price', 'description', 'category',)
     column_sortable_list = ('id', 'price', 'category')
     column_searchable_list = ('id', 'trainer', 'category', 'name')
 
@@ -159,9 +157,6 @@ class GroupView(ModelView):
 
 class User(db.Model):
     __tablename__ = 'users'
-    form_columns = ('name', 'nickname', 'telegram', 'type', 'contact')
-    form_excluded_columns = ('state', 'at_category')
-
     id = db.Column(Integer, primary_key=True)
     name = db.Column(String(255))
     nickname = db.Column(String(255))
@@ -206,13 +201,29 @@ class UserView(ModelView):
 class UserGroupModel(db.Model):
     __tablename__ = 'user_group'
     id = db.Column(Integer, autoincrement=True, primary_key=True)
-    user = db.Column(Integer, ForeignKey('users.id', ondelete='CASCADE', onupdate='CASCADE'))
-    group = db.Column(Integer, ForeignKey('users.id', ondelete='CASCADE', onupdate='CASCADE'))
+    user_id = db.Column(Integer, ForeignKey('users.id', ondelete='CASCADE', onupdate='CASCADE'))
+    group_id = db.Column(Integer, ForeignKey('users.id', ondelete='CASCADE', onupdate='CASCADE'))
     type = db.Column(String(255))
+
+
 
     def __repr__(self):
         return self.id
 
+
+class UserGroupView(ModelView):
+    column_list = ('id', 'user_id', 'group_id', 'type')
+    column_editable_list = ('user_id', 'group_id', 'type')
+    column_sortable_list = ('user_id', 'group_id', 'type')
+    column_searchable_list = ('user_id', 'group_id', 'type')
+    form_columns = ('user_id', 'group_id', 'type')
+    form_choices = {
+        'type': [
+            ('enroll', 'enroll'), ('trainer', 'trainer'), ('student', 'student')
+        ]}
+
+    def is_accessible(self):
+        return login.current_user.is_authenticated
 
 # Create user model.
 class UserLogin(db.Model):
@@ -255,6 +266,18 @@ class LoginForm(form.Form):
 
     def get_user(self):
         return db.session.query(UserLogin).filter_by(login=self.login.data).first()
+
+
+class Configs(FileAdmin):
+    can_delete = False
+    can_rename = False
+    can_mkdir = False
+    can_delete_dirs = False
+    can_upload = False
+    editable_extensions = ('json', 'txt')
+
+    def is_accessible(self):
+        return login.current_user.is_authenticated
 
 
 class MyAdminIndexView(AdminIndexView):
@@ -301,21 +324,25 @@ def init_login():
 class MainLogView(BaseView):
     @expose('/')
     def index(self):
-
         with open(ROOT_DIR + '/log/main.log', 'r') as m_logs:
             content = m_logs.read()
 
         return self.render('log_template.html', content=content)
 
+    def is_accessible(self):
+        return login.current_user.is_authenticated
+
 
 class DBLogView(BaseView):
     @expose('/')
     def index(self):
-
         with open(ROOT_DIR + '/log/database.log', 'r') as m_logs:
             content = m_logs.read()
 
         return self.render('log_template.html', content=content)
+
+    def is_accessible(self):
+        return login.current_user.is_authenticated
 
 
 class UtilsLogView(BaseView):
@@ -325,6 +352,9 @@ class UtilsLogView(BaseView):
             content = m_logs.read()
 
         return self.render('log_template.html', content=content)
+
+    def is_accessible(self):
+        return login.current_user.is_authenticated
 
 
 init_login()
@@ -337,16 +367,17 @@ try:
     admin.add_view(CourseView(Course, db.session))
     admin.add_view(UserView(User, db.session))
     admin.add_view(GroupView(Group, db.session))
+    admin.add_view(UserGroupView(UserGroupModel, db.session))
     admin.add_view(MainLogView(name='Main Logs', endpoint='/main_logs', category='Logs'))
     admin.add_view(DBLogView(name='Database Logs', endpoint='/database_logs', category='Logs'))
     admin.add_view(UtilsLogView(name='Utils Logs', endpoint='/utils_logs', category='Logs'))
+    admin.add_view(Configs(ROOT_DIR + "/configs/", '/configs', name="Configs"))
 
 except ValueError:
     pass
 app.secret_key = app.config['SECRET']
 
 if __name__ == "__main__":
-    db.create_all()
     admin_user = UserLogin(login='Admin', password=generate_password_hash('123456'))
 
     db.session.commit()

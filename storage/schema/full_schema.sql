@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS courses (
 	"name" varchar(255) NOT NULL,
 	"category" INTEGER NOT NULL,
 	"trainer" varchar(255) NOT NULL,
-	"link" text default '',
+	"link" text default 'google.com',
 	"description" TEXT NOT NULL,
 	"price" integer NOT NULL,
 	CONSTRAINT "courses_pk" PRIMARY KEY ("id", "name")
@@ -57,11 +57,12 @@ CREATE TABLE IF NOT EXISTS users (
 
 
 CREATE TABLE IF NOT EXISTS user_group (
-	"user" integer NOT NULL,
-	"group" integer NOT NULL,
+    "id" SERIAL NOT NULL UNIQUE ,
+	"user_id" integer NOT NULL,
+	"group_id" integer NOT NULL,
 	"type" varchar(255) NOT NULL,
 	"push" integer,
-	CONSTRAINT "user_group_pk" PRIMARY KEY ("user", "group")
+	CONSTRAINT "user_group_pk" PRIMARY KEY ("id", "user_id", "group_id")
 ) WITH (
   OIDS=FALSE
 );
@@ -89,9 +90,9 @@ ALTER TABLE "groups" DROP CONSTRAINT IF EXISTS "groups_fk0";
 ALTER TABLE "groups" ADD CONSTRAINT "groups_fk0" FOREIGN KEY ("course") REFERENCES "courses"("id") ON UPDATE CASCADE ON DELETE CASCADE ;
 
 ALTER TABLE "user_group" DROP CONSTRAINT IF EXISTS "user_group_fk0";
-ALTER TABLE "user_group" ADD CONSTRAINT "user_group_fk0" FOREIGN KEY ("user") REFERENCES "users"("id");
+ALTER TABLE "user_group" ADD CONSTRAINT "user_group_fk0" FOREIGN KEY (user_id) REFERENCES "users"("id");
 
 ALTER TABLE "user_group" DROP CONSTRAINT IF EXISTS "user_group_fk1";
-ALTER TABLE "user_group" ADD CONSTRAINT "user_group_fk1" FOREIGN KEY ("group") REFERENCES "groups"("id");
+ALTER TABLE "user_group" ADD CONSTRAINT "user_group_fk1" FOREIGN KEY (group_id) REFERENCES "groups"("id");
 
 
