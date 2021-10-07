@@ -97,9 +97,10 @@ class DataStore:
                 if err.pgcode == '23505':
                     logger.warning(
                         f"{_getframe().f_back.f_code.co_name} --> {_getframe().f_code.co_name}"
-                        f" Skip insert cuause 23505 err code ")
-                logger.error(
-                    f"{_getframe().f_back.f_code.co_name} --> {_getframe().f_code.co_name}: DB Error {err}|  {vals}")
+                        f" Skip insert cause duplicate row ")
+                else:
+                    logger.error(
+                        f"{_getframe().f_back.f_code.co_name} --> {_getframe().f_code.co_name}: DB Error {err}|  {vals}")
             except Exception as err:
                 logger.error(f"{_getframe().f_back.f_code.co_name} --> {_getframe().f_code.co_name}: "
                              f"{err=} |  {vals=}")

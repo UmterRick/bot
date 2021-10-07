@@ -30,11 +30,11 @@ async def create_new_enroll(user, store):
     current_enroll = json.loads(user['temp_state_2'])
     to_admin_text = f"<strong>Получена новая заявка</strong>\n\nІм'я: <i>{user['name']}</i>;" \
                     f"\nНікнейм: @{user['nickname']};\nТелефон: {user['contact']}\n\nЗаписан(а) на курсы: \n"
-    groups = await store.select('user_group', {'"user"': user['id'], 'type': 'student'}, ('"group"',))
+    groups = await store.select('user_group', {'"user_id"': user['id'], 'type': 'student'}, ('"group_id"',))
     new_course = await store.select_one('courses', {'id': current_enroll[0]}, ('name',))
     user_courses = list()
     for group in groups:
-        course_id = await store.select_one('groups', {'id': group['group']}, ('course',))
+        course_id = await store.select_one('groups', {'id': group['group_id']}, ('course',))
         course_id = course_id['course']
         user_courses.append(course_id)
     user_courses = list(set(user_courses))
