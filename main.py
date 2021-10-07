@@ -71,7 +71,7 @@ async def add_chat_to_stream(message: types.Message):
         logger.info(f"New chat for {chat}: {invite_link.invite_link} ")
 
 
-@dp.message_handler(commands='start', state='*')
+@dp.message_handler(lambda c: 'read_push' not in c.data, commands='start', state='*')
 async def auth_user_type(message: types.Message):
     chat = message.chat.id
     curr_user = await store.select_one('users', {'telegram': chat}, ('name', 'type'))
@@ -104,7 +104,7 @@ async def auth_user_type(message: types.Message):
             pass
 
 
-@dp.callback_query_handler(state=MainStates.login_state)
+@dp.callback_query_handler(lambda c: 'read_push' not in c.data, state=MainStates.login_state)
 async def auth_step_two(call: types.CallbackQuery):
     if call.data == 'turn_back':
         pass
@@ -134,7 +134,7 @@ async def auth_step_two(call: types.CallbackQuery):
         logger.info(f"User {call.from_user.full_name} enter as Учень")
 
 
-@dp.callback_query_handler(state=MainStates.password_state)
+@dp.callback_query_handler(lambda c: 'read_push' not in c.data, state=MainStates.password_state)
 async def from_password(call: types.CallbackQuery):
     if call.data == 'turn_back':
         await MainStates.login_state.set()
@@ -142,7 +142,7 @@ async def from_password(call: types.CallbackQuery):
         await call.message.edit_text(start_text, reply_markup=user_type_kb())
 
 
-@dp.message_handler(state=MainStates.password_state)
+@dp.message_handler(lambda c: 'read_push' not in c.data, state=MainStates.password_state)
 async def check_password(message: types.Message):
     passwords = read_config('users_access.json')
     passwords = passwords.get('passwords', {})
@@ -189,7 +189,7 @@ async def check_password(message: types.Message):
         logger.info(f"User {message.from_user.full_name} input wrong password")
 
 
-@dp.callback_query_handler(state=MainStates.choose_trainer)
+@dp.callback_query_handler(lambda c: 'read_push' not in c.data, state=MainStates.choose_trainer)
 async def trainer_name_clicked(call: types.CallbackQuery):
     if call.data == 'turn_back':
         await call.message.edit_text(start_text, 'HTML', reply_markup=user_type_kb())
@@ -218,7 +218,7 @@ async def trainer_name_clicked(call: types.CallbackQuery):
         logger.info(f"User {call.from_user.full_name} auth as Trainer: {call.data}")
 
 
-@dp.callback_query_handler(state=MainStates.wait_menu_click)
+@dp.callback_query_handler(lambda c: 'read_push' not in c.data, state=MainStates.wait_menu_click)
 async def menu_btn_clicked(call: types.CallbackQuery):
     chat_id = call.message.chat.id
 
@@ -263,7 +263,7 @@ async def menu_btn_clicked(call: types.CallbackQuery):
         await call.message.edit_text(start_text, reply_markup=user_type_kb())
 
 
-@dp.callback_query_handler(state=[MainStates.show_contact, MainStates.show_my_courses])
+@dp.callback_query_handler(lambda c: 'read_push' not in c.data, state=[MainStates.show_contact, MainStates.show_my_courses])
 async def from_main_menu(call: types.CallbackQuery, state: FSMContext):
     chat_id = call.message.chat.id
     call_user = await store.select_one('users', {'telegram': chat_id}, ('type', 'id', 'name'))
@@ -349,7 +349,7 @@ async def from_main_menu(call: types.CallbackQuery, state: FSMContext):
             await bot.answer_callback_query(call.id, config["phone2"], True)
 
 
-@dp.callback_query_handler(state=MainStates.wait_for_category)
+@dp.callback_query_handler(lambda c: 'read_push' not in c.data, state=MainStates.wait_for_category)
 async def courses_list_request(call: types.CallbackQuery):
     logger.info(f"User {call.from_user.full_name} viewing courses on category {call.data}")
     chat_id = call.message.chat.id
@@ -390,7 +390,7 @@ async def courses_list_request(call: types.CallbackQuery):
         await update_state(chat_id, MainStates.wait_for_course, store)
 
 
-@dp.callback_query_handler(state=MainStates.wait_for_course)
+@dp.callback_query_handler(lambda c: 'read_push' not in c.data, state=MainStates.wait_for_course)
 async def group_list_request(call: types.CallbackQuery):
     logger.info(f"User {call.from_user.full_name} viewing groups on course id = {call.data}")
 
@@ -424,7 +424,7 @@ async def group_list_request(call: types.CallbackQuery):
     await update_state(chat_id, MainStates.wait_for_group, store)
 
 
-@dp.callback_query_handler(state=MainStates.wait_for_group)
+@dp.callback_query_handler(lambda c: 'read_push' not in c.data, state=MainStates.wait_for_group)
 async def group_request(call: types.CallbackQuery):
     logger.info(f"User {call.from_user.full_name} viewing group info ")
 
@@ -478,7 +478,7 @@ async def group_request(call: types.CallbackQuery):
         await update_state(chat_id, MainStates.wait_for_client_answer, store)
 
 
-@dp.callback_query_handler(state=MainStates.students_list)
+@dp.callback_query_handler(lambda c: 'read_push' not in c.data, state=MainStates.students_list)
 async def student_clicked(call: types.CallbackQuery):
     logger.info(f"User {call.from_user.full_name} viewing student info student id = {call.data}")
 
@@ -495,7 +495,7 @@ async def student_clicked(call: types.CallbackQuery):
         await bot.answer_callback_query(call.id, user_text, True, cache_time=10)
 
 
-@dp.callback_query_handler(state=MainStates.wait_for_client_answer)
+@dp.callback_query_handler(lambda c: 'read_push' not in c.data, state=MainStates.wait_for_client_answer)
 @dp.message_handler(content_types=['text', 'contact'], state=MainStates.wait_for_client_answer)
 async def client_answer_enroll_message(input_obj: [types.Message, types.CallbackQuery]):
     logger.info(f"User {input_obj.from_user.full_name} accept or decline enroll sending")
@@ -564,7 +564,7 @@ async def client_answer_enroll_message(input_obj: [types.Message, types.Callback
         logger.error(f"Miss input : {type(input_obj)} --> {data}")
 
 
-@dp.callback_query_handler(state=MainStates.answer_enroll)
+@dp.callback_query_handler(lambda c: 'read_push' not in c.data, state=MainStates.answer_enroll)
 async def check_client_enroll(call: types.CallbackQuery):
     logger.info(f"Admin {call.from_user.full_name} answer to user enroll")
 
