@@ -7,8 +7,8 @@
     "file": "main.log",
     "level": "DEBUG"
   },
-  "parser": {
-    "file": "parser.log",
+  "utils": {
+    "file": "utils.log",
     "level": "DEBUG"
   }
 
