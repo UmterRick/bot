@@ -1,6 +1,6 @@
-appdirs==1.4.3
-apturl==0.5.2
-asgiref==3.3.1
+appdirs
+apturl
+asgiref
 async-timeout==3.0.1
 attrs==20.3.0
 Babel==2.9.0
