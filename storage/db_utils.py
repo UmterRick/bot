@@ -11,6 +11,7 @@ expected_tables = set(config.pop("expected_tables"))
 class DataStore:
 
     def __init__(self):
+        config.pop('url')
         self.conn = psycopg2.connect(**config)
         self.cursor = self.Cursor(self.conn)
 

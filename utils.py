@@ -45,7 +45,7 @@ def set_logger(logger_name) -> logging.Logger:
     c_handler.setFormatter(c_format)
     f_handler.setFormatter(f_format)
     # Add handlers to the logger
-    # logger.addHandler(c_handler)
+    logger.addHandler(c_handler)
     logger.addHandler(f_handler)
     logger.info(f"Write to {f_handler}")
     return logger
@@ -65,7 +65,7 @@ async def update_user_group(store):
                         await store.insert('user_group',
                                            {'"user_id"': user['id'], '"group_id"': group['id'], 'type': 'trainer'})
                     except Exception as ex:
-                        print(ex)
+                        utils_logger.error(f"upd user group table trouble {ex}")
 
 
 async def get_admin_group(store):
@@ -78,4 +78,8 @@ async def get_admin_group(store):
             admin_chat = admin_chat[0]['telegram']
         else:
             admin_chat = 00000000
+
         return admin_chat
+
+
+utils_logger = set_logger('utils')
