@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS users (
 	"id" SERIAL NOT NULL UNIQUE ,
 	"name" varchar(255) NOT NULL,
 	"nickname" varchar(255) NOT NULL,
-	"telegram" INTEGER NOT NULL,
+	"telegram" BIGINT NOT NULL,
 	"contact" varchar(40),
 	"type" integer NOT NULL,
 	"state" TEXT NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS user_group (
 	"group_id" integer NOT NULL,
 	"type" varchar(255) NOT NULL,
 	"push" integer,
-	CONSTRAINT "user_group_pk" PRIMARY KEY ("id", "user_id", "group_id")
+	CONSTRAINT "user_group_pk" PRIMARY KEY ("user_id", "group_id", "type")
 ) WITH (
   OIDS=FALSE
 );
