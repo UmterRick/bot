@@ -9,4 +9,4 @@ for file in logs:
         log_file.truncate(0)
 
 with open(ROOT_DIR + '/log/main.log', 'w') as file:
-    file.write(f"{datetime.datetime.now()} - ALL LOGS FILE WAS CLEARED BY SCRIPT")
+    file.write(f"{datetime.datetime.now()} - ALL LOGS FILE WAS CLEARED BY SCRIPT\n")

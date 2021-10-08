@@ -1,8 +1,7 @@
 from storage.db_utils import DataStore, StoreError
 from utils import set_logger
-from sys import _getframe
 import json
-logger = set_logger('main')
+logger = set_logger('utils')
 USER_TYPE = {
     0: 'Гість',
     1: 'Адміністратор📒',
@@ -13,11 +12,10 @@ USER_TYPE = {
 
 async def update_state(chat, state, store: DataStore):
     try:
-        print(str(state.state))
         await store.update('users', {'telegram': chat}, {'state': str(state.state)})
         return True
     except StoreError as err:
-        logger.info(f"{_getframe().f_code.co_name} | Cannot update state | {err}")
+        logger.info(f"| Cannot update state | {err}")
 
 
 async def get_trainers(store):

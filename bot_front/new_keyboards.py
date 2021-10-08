@@ -138,7 +138,6 @@ async def my_courses(store, user):
                 callback = list()
                 for info in gr:
                     gr_type = '🌐 Online' if info[2] else '🏠 Offline'
-                    print(f"{info=}")
                     g_msg += f"📅{info[0]}  🕒{info[1].strftime('%H:%M')} {gr_type}\n"
                     callback.append(info[3])
                 btn1 = InlineKeyboardButton("Студенти", callback_data=json.dumps({'students': callback}))
@@ -157,7 +156,6 @@ async def my_courses(store, user):
             group_info = await store.select_one('groups', {'id': group['group_id']},
                                                 ('id', 'stream', 'day', 'time', 'type', 'course', 'chat'))
             course = await store.select_one('courses', {'id': group_info['course']}, ('name', 'id', 'trainer'))
-            print(f"------- {group_info}, {course} ----------")
             if data.get(course['id'], None) is None:
                 data[course['id']] = {'name': course['name'], 'groups': [group_info, ]}
             data[course['id']]['groups'].append(group_info)
@@ -178,7 +176,6 @@ async def my_courses(store, user):
                 keyboard = InlineKeyboardMarkup()
                 btn1 = InlineKeyboardButton(text="", url="google.com")
                 for info in gr:
-                    print(f"*********** {info}")
                     gr_type = '🌐 Online' if info[2] else '🏠 Offline'
                     g_msg += f"📅{info[0]}  🕒{info[1].strftime('%H:%M')} {gr_type}\n"
                     url = info[4] if info[4] is not None else contacts.get('telegram', 'google.com')
@@ -217,9 +214,6 @@ async def groups_stream_kb(course_id, store):
         btn = InlineKeyboardButton("Подати заявку у групу", callback_data=json.dumps([course_id, stream_id, 'enroll']))
         keyboard.add(btn)
         to_send.append([msg, keyboard])
-
-    for i in to_send:
-        print(i)
     return to_send
 
 
