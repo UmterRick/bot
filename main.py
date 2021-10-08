@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from sys import _getframe
 from collections.abc import Iterable
 
 import aiogram.utils.exceptions
@@ -22,8 +21,6 @@ from datetime import datetime, timedelta
 bot_config = read_config('bot.json')
 webhook_config = read_config('webhook.json')
 memory_storage = MemoryStorage()
-
-temp_course_text = {}
 
 WEBHOOK_HOST = webhook_config.get("host", "")
 WEBHOOK_PATH = webhook_config.get("path", "")
@@ -66,17 +63,17 @@ async def add_chat_to_stream(message: types.Message):
 
     select_chat_to = await store.select_one('users', {'telegram': message.from_user.id}, ('temp_state_1',))
     chat_to = json.loads(select_chat_to['temp_state_1'])
-    for chat in chat_to['add_chat_to']:
+    for chat in chat_to.get('add_chat_to', []):
         await store.update('groups', {'id': chat}, {'chat': invite_link.invite_link})
         logger.info(f"New chat for {chat}: {invite_link.invite_link} ")
 
 
-@dp.message_handler(lambda c: 'read_push' not in c.data, commands='start', state='*')
+@dp.message_handler(commands='start', state='*')
 async def auth_user_type(message: types.Message):
     chat = message.chat.id
     curr_user = await store.select_one('users', {'telegram': chat}, ('name', 'type'))
-
-    logger.info(f"{_getframe().f_code.co_name} | Start on user: {curr_user} ([] = new user)")
+    print(curr_user)
+    logger.info(f"| Start on user: {curr_user} ([] = new user)")
     if not curr_user or curr_user['type'] <= 0:
         if not curr_user:
             user = {
@@ -88,15 +85,15 @@ async def auth_user_type(message: types.Message):
                 'state': str(MainStates.login_state.state)
             }
             await store.insert('users', user)
-            logger.info(f"{_getframe().f_code.co_name} | New user added | {user}")
+            logger.info(f" | New user added | {user}")
         await bot.send_message(chat, start_text, reply_markup=user_type_kb())
         await MainStates.login_state.set()
         await update_state(message.chat.id, MainStates.login_state, store)
-
+        return
     elif int(chat) > 0:
         await bot.send_message(chat, registered_greeting(USER_TYPE.get(curr_user['type'], 0), curr_user['name']),
                                'HTML', reply_markup=await menu_kb(curr_user['type']))
-        logger.info(f"{_getframe().f_code.co_name} | Registered user {message.chat.id} start Bot")
+        logger.info(f" | Registered user {message.chat.id} start Bot")
         await MainStates.wait_menu_click.set()
         await update_state(message.chat.id, MainStates.wait_menu_click, store)
     elif int(chat) < 0:
@@ -111,7 +108,7 @@ async def auth_step_two(call: types.CallbackQuery):
     try:
         user_type = int(call.data)
     except ValueError as err:
-        logger.error(f"{_getframe().f_code.co_name} | Incorrect User Type got : "
+        logger.error(f" | Incorrect User Type got : "
                      f"{call.data}, 1,2,3 was expected ({err})")
         user_type = 3
 
@@ -142,13 +139,12 @@ async def from_password(call: types.CallbackQuery):
         await call.message.edit_text(start_text, reply_markup=user_type_kb())
 
 
-@dp.message_handler(lambda c: 'read_push' not in c.data, state=MainStates.password_state)
+@dp.message_handler(state=MainStates.password_state)
 async def check_password(message: types.Message):
     passwords = read_config('users_access.json')
     passwords = passwords.get('passwords', {})
     chat_id = message.chat.id
     user = await store.select_one('users', {'telegram': message.chat.id}, ('temp_state_1', 'type'))
-
     to_delete = await store.select_one('users', {'telegram': message.chat.id}, ('temp_state_2',))
     if int(user['temp_state_1']) == 1 and message.text == passwords.get('admin', None) and int(chat_id) < 0:
         await bot.send_message(message.chat.id, 'Ви увійшли як <b> Чат Адміністраторів</b>', parse_mode='HTML')
@@ -263,7 +259,8 @@ async def menu_btn_clicked(call: types.CallbackQuery):
         await call.message.edit_text(start_text, reply_markup=user_type_kb())
 
 
-@dp.callback_query_handler(lambda c: 'read_push' not in c.data, state=[MainStates.show_contact, MainStates.show_my_courses])
+@dp.callback_query_handler(lambda c: 'read_push' not in c.data,
+                           state=[MainStates.show_contact, MainStates.show_my_courses])
 async def from_main_menu(call: types.CallbackQuery, state: FSMContext):
     chat_id = call.message.chat.id
     call_user = await store.select_one('users', {'telegram': chat_id}, ('type', 'id', 'name'))
@@ -395,19 +392,28 @@ async def group_list_request(call: types.CallbackQuery):
     logger.info(f"User {call.from_user.full_name} viewing groups on course id = {call.data}")
 
     chat_id = call.message.chat.id
-
-    to_delete = await store.select_one('users', {'telegram': chat_id}, ('temp_state_1',))
+    if call.data == 'None':
+        await bot.answer_callback_query(call.id, 'Опису цього курсу ще не існує')
+        return
+    to_delete = await store.select_one('users', {'telegram': chat_id}, ('temp_state_1', 'id'))
+    user_id = to_delete['id']
     to_delete = json.loads(to_delete['temp_state_1'])
     to_delete = list(to_delete.get('courses'))
     to_delete.pop(to_delete.index(call.message.message_id))
     for msg in to_delete:
-        await bot.delete_message(chat_id, msg)
+        try:
+            await bot.delete_message(chat_id, msg)
+        except aiogram.exceptions.MessageToDeleteNotFound:
+            logger.warning("Skip deleting message")
+        except Exception as ex:
+            logger.error(f"Cannot delete message from user #{user_id} chat cause {ex} ")
 
     if call.data == 'turn_back':
         await MainStates.wait_for_category.set()
         await update_state(chat_id, MainStates.wait_for_category, store)
         await call.message.edit_text('Оберіть категорію курсів:', reply_markup=await topic_kb(store))
         return
+
     course_id = int(call.data)
     text_msg = await bot.send_message(chat_id, call.message.text)
     await bot.delete_message(chat_id, call.message.message_id)
@@ -516,6 +522,7 @@ async def client_answer_enroll_message(input_obj: [types.Message, types.Callback
         return
 
     admin_chat = await get_admin_group(store)
+
     user = await store.select_one('users', {'telegram': chat_id},
                                   ('id', 'type', 'temp_state_1', 'temp_state_2', 'contact',
                                    'name', 'nickname'))
@@ -528,6 +535,23 @@ async def client_answer_enroll_message(input_obj: [types.Message, types.Callback
         await update_state(chat_id, MainStates.wait_menu_click, store)
 
     elif contact is not None or data == 'Так' or data is True:
+        course_id, stream_id = json.loads(user['temp_state_2'])
+        enroll_to_groups = await store.select('groups', {'stream': stream_id, 'course': course_id}, ('id',))
+        enroll_to_groups = [group['id'] for group in enroll_to_groups]
+        enroll_existing = await store.select_one('user_group', {'user_id': user['id'], 'group_id': enroll_to_groups[0]},
+                                                 ('id',))
+        if enroll_existing:
+            logger.warning(f"User {user['nickname']} tey send duplicate enroll to {enroll_to_groups}")
+
+            msg_id = input_obj.message.message_id if isinstance(input_obj,
+                                                                types.CallbackQuery) else input_obj.message_id
+            await bot.delete_message(chat_id, msg_id)
+            await bot.send_message(chat_id, '<b> Ви вже подавали заявку, або навчаетесь у цій групі </b> ',
+                                   parse_mode='HTML',
+                                   reply_markup=await menu_kb(user['type']))
+            await MainStates.wait_menu_click.set()
+            await update_state(chat_id, MainStates.wait_menu_click, store)
+            return
         phone = user['contact']
         if phone is None or not phone:
             await store.update('users', {'telegram': chat_id}, {'contact': contact})
@@ -536,9 +560,7 @@ async def client_answer_enroll_message(input_obj: [types.Message, types.Callback
                                            'name', 'nickname'))
 
         enroll_msg = await create_new_enroll(user, store)
-        course_id, stream_id = json.loads(user['temp_state_2'])
-        enroll_to_groups = await store.select('groups', {'stream': stream_id, 'course': course_id}, ('id',))
-        enroll_to_groups = [group['id'] for group in enroll_to_groups]
+
         for group in enroll_to_groups:
             await store.insert('user_group', {'"user_id"': user['id'], '"group_id"': group, 'type': 'enroll'})
         keyboard = await admin_enroll_kb(user, enroll_to_groups)
@@ -587,7 +609,6 @@ async def check_client_enroll(call: types.CallbackQuery):
         admin_service_msg = f" ✅\n{call.from_user.full_name} <b>ПІДТВЕРДИВ(ЛА)</b> заявку від\n" \
                             f"🎓 @{user['nickname']}\n🔵 <b>{course_name}</b>"
         logger.info(f"User {call.from_user.full_name} ACCEPT {user['nickname']} enroll")
-
 
     else:
         for group in to_groups:
@@ -718,6 +739,7 @@ def repeat(coroutine, curr_loop):
 
 
 async def on_startup(dispatcher):  # there was dispatcher in args
+    logger.info(f"on start dispatcher: {dispatcher}")
     await bot.set_webhook(WEBHOOK_URL)
     # insert code here to run it after start
 
@@ -737,14 +759,14 @@ if __name__ == "__main__":
     existing_tables = store.check_existence()
     if not existing_tables[0]:
         logger.error(
-            f"{_getframe().f_code.co_name}: Expected tables doesnt match: {existing_tables[1]} "
+            f" | Expected tables doesnt match: {existing_tables[1]} "
             f"from {database_config.get('expected_tables')} ")
 
         store.create_tables()
         existing_tables = store.check_existence()
         if not existing_tables[0]:
             logger.error(
-                f"{_getframe().f_code.co_name}: Expected tables doesnt match: {existing_tables[1]} "
+                f" | Expected tables doesnt match: {existing_tables[1]} "
                 f"from {database_config.get('expected_tables')} ")
             exit()
 
