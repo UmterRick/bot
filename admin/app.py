@@ -1,29 +1,24 @@
 import json
-from flask import url_for, redirect, render_template, request
-from flask_admin.contrib import sqla
-from flask import Flask
-from flask_admin.form import fields, rules
-from flask_admin.contrib.fileadmin import FileAdmin
+import flask_login as login
 from flask_admin.contrib.sqla import ModelView
-
-from flask_admin.model import typefmt
-from flask_admin.model.template import macro
+from flask_admin.contrib.fileadmin import FileAdmin
+from flask import url_for, redirect, render_template, request, Flask
 from sqlalchemy import Integer, ForeignKey, String, Time
 from flask_admin import Admin, AdminIndexView, helpers, expose, BaseView
-import flask_login as login
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_babelex import Babel
 from flask_sqlalchemy import SQLAlchemy
 from wtforms import form, fields, validators
-from utils import week_days_translate, ROOT_DIR
+from utils import week_days_translate, ROOT_DIR, read_config, set_logger
 
 app = Flask(__name__)
-
+db_config = read_config('database.json')
 app.config['FLASK_ADMIN_SWATCH'] = 'cerulean'
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:postgres@localhost:5432/botdb"
+app.config['SQLALCHEMY_DATABASE_URI'] = db_config.get('url')
 app.config['SECRET'] = '\x08/\x8a\x15(~\xe6\xe85-\xc7\x93\xdd\xb7\x88\xd0\xd9\xb1\xa5&\x98\xf8P'
 db = SQLAlchemy(app)
 babel = Babel(app)
+admin_logger = set_logger('admin_panel')
 
 
 class LoginView(ModelView):
@@ -86,9 +81,9 @@ class CourseView(ModelView):
     def on_model_change(self, form, model, is_created):
         try:
             trainer = json.loads(form.trainer._value())
-            a = trainer['trainer']
             super().on_model_change(form, model, is_created)
         except Exception as ex:
+            admin_logger.warning(f"Incorrect trainers pattern {model}")
             raise validators.ValidationError('Check trainer filed pattern {"trainer": ["name1", "name2"]}')
 
     def is_accessible(self):
@@ -205,8 +200,6 @@ class UserGroupModel(db.Model):
     group_id = db.Column(Integer, ForeignKey('users.id', ondelete='CASCADE', onupdate='CASCADE'))
     type = db.Column(String(255))
 
-
-
     def __repr__(self):
         return self.id
 
@@ -224,6 +217,7 @@ class UserGroupView(ModelView):
 
     def is_accessible(self):
         return login.current_user.is_authenticated
+
 
 # Create user model.
 class UserLogin(db.Model):
@@ -379,6 +373,5 @@ app.secret_key = app.config['SECRET']
 
 if __name__ == "__main__":
     admin_user = UserLogin(login='Admin', password=generate_password_hash('123456'))
-
     db.session.commit()
     app.run(port=8000)
