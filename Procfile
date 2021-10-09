@@ -1,1 +1,1 @@
-web: gunicorn wsgi:app | ado start
+web: ado start
