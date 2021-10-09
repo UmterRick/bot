@@ -775,9 +775,10 @@ if __name__ == "__main__":
     loop.run_until_complete(bot.set_my_commands(commands))
     loop.run_until_complete(get_content(store))
     loop.call_later(600, repeat, schedule_push, loop)
+
     start_webhook(
         dispatcher=dp,
-        webhook_path=WEBHOOK_PATH,
+        webhook_path=webhook_config['path'],
         on_startup=on_startup,
         on_shutdown=on_shutdown,
         skip_updates=True,
