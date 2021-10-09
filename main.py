@@ -645,6 +645,7 @@ async def schedule_push():
     for group in groups:
 
         group_data = await store.select_one('groups', {'id': group}, ('program_day', 'time', 'course'))
+        print(f"{group_data=}")
         course = await store.select_one('courses', {'id': group_data['course']}, ('name',))
         course_name = course['name']
         lesson_day = group_data['program_day']
@@ -652,14 +653,14 @@ async def schedule_push():
         for order, day in enumerate(week_days_tuple):
             if day == lesson_day:
                 day_before_lesson = week_days_tuple[order - 1]
-
+        print(f"{lesson_day=}\n{day_before_lesson=}")
         if today in (lesson_day, day_before_lesson):
-            group_datetime = datetime.now().replace(hour=group_data['time'].hour, minute=group_data['time'].minute)
             if today == day_before_lesson:
-                logger.info(f"*** Tomorrow is lesson in {group} group")
-
                 tomorrow = datetime.now() + timedelta(days=1)
-                delta = group_datetime - tomorrow if group_datetime < tomorrow else tomorrow - group_datetime
+                group_datetime = tomorrow.replace(hour=group_data['time'].hour, minute=group_data['time'].minute)
+
+                logger.info(f"*** Tomorrow is lesson in {group} group")
+                delta = group_datetime - tomorrow if group_datetime > tomorrow else tomorrow - group_datetime
                 if delta.seconds < 10 * 60:
                     logger.info(f"*** Now - LessonTime < 10 min")
                     logger.info(f"*** START sending notifications")
@@ -669,7 +670,7 @@ async def schedule_push():
                         row = await store.select_one("user_group",
                                                      {'"user_id"': user, '"group_id"': group, 'type': 'student'},
                                                      ('push',))
-                        push = row['push']
+                        push = row['push'] if row else 1
                         if push < 0:
                             user_data = await store.select_one('users', {'id': user}, ('telegram',))
                             user_chat = user_data['telegram']
@@ -684,6 +685,8 @@ async def schedule_push():
                     logger.info(f"*** SET push as WAITING")
 
             elif today == lesson_day:
+                group_datetime = datetime.now().replace(hour=group_data['time'].hour, minute=group_data['time'].minute)
+
                 logger.info(f"*** Today is Lesson in group id = {group}")
 
                 delta = group_datetime - now if group_datetime < now else now - group_datetime
@@ -736,7 +739,7 @@ async def check_state_for_user_message(input_obj: types.Message, state: FSMConte
 
 def repeat(coroutine, curr_loop):
     asyncio.ensure_future(coroutine(), loop=curr_loop)
-    curr_loop.call_later(600, repeat, coroutine, curr_loop)
+    curr_loop.call_later(5, repeat, coroutine, curr_loop)
 
 
 async def on_startup(dispatcher):  # there was dispatcher in args
@@ -774,7 +777,7 @@ def start_bot():
     loop = asyncio.get_event_loop()
     loop.run_until_complete(bot.set_my_commands(commands))
     loop.run_until_complete(get_content(store))
-    loop.call_later(600, repeat, schedule_push, loop)
+    loop.call_later(3, repeat, schedule_push, loop)
     # dp.bot.set_webhook(webhook_config['url']+bot_config['TOKEN'],)
 
     start_webhook(

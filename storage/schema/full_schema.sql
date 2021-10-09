@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS user_group (
 	"user_id" integer NOT NULL,
 	"group_id" integer NOT NULL,
 	"type" varchar(255) NOT NULL,
-	"push" integer,
+	"push" integer DEFAULT -1,
 	CONSTRAINT "user_group_pk" PRIMARY KEY ("user_id", "group_id", "type")
 ) WITH (
   OIDS=FALSE
