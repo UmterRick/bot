@@ -1,7 +1,7 @@
 {
-  "host": "https://mms-bot.herokuapp.com",
+  "host": "https://app-try1.herokuapp.com",
   "path": "/webhook/",
-  "url": "https://mms-bot.herokuapp.com/webhook/",
+  "url": "https://app-try1.herokuapp.com/webhook/",
   "app_host": "0.0.0.0",
   "app_port": 5000
 }
