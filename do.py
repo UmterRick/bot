@@ -6,7 +6,7 @@ def set_hook():
     bot = Bot(token=bot_config['TOKEN'])
 
     async def hook_set():
-        WEBHOOK_URL = webhook_config.get("url", "") + bot_config["TOKEN"]
+        WEBHOOK_URL = webhook_config.get("url", "") + '/' + bot_config["TOKEN"]
         await bot.set_webhook(WEBHOOK_URL)
         print(await bot.get_webhook_info())
 
