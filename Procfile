@@ -1,3 +1,3 @@
-web: python main.py
+web: ado start
 
 web: gunicorn wsgi:app

@@ -745,7 +745,7 @@ async def on_shutdown(dispatcher):
     logging.warning('Bye!')
 
 
-if __name__ == "__main__":
+def start_bot():
     database_config = read_config('database.json')
     logger.info(f"===== STARTUP BOT =====")
     existing_tables = store.check_existence()
