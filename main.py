@@ -31,6 +31,12 @@ dp.middleware.setup(LoggingMiddleware())
 store = DataStore()
 logger = set_logger('main')
 
+WEBHOOK_HOST = webhook_config.get("host", "")
+WEBHOOK_PATH = webhook_config.get("path", "") + bot_config['TOKEN']
+WEBHOOK_URL = webhook_config.get("url", "") + bot_config["TOKEN"]
+
+WEBAPP_HOST = webhook_config.get("app_host", "")  # or ip
+WEBAPP_PORT = webhook_config.get("app_port", -1)
 
 class MainStates(StatesGroup):
     show_contact = State()
@@ -768,12 +774,6 @@ def start_bot():
     loop.run_until_complete(get_content(store))
     loop.call_later(600, repeat, schedule_push, loop)
     # dp.bot.set_webhook(webhook_config['url']+bot_config['TOKEN'],)
-    WEBHOOK_HOST = webhook_config.get("host", "")
-    WEBHOOK_PATH = webhook_config.get("path", "") + bot_config['TOKEN']
-    WEBHOOK_URL = webhook_config.get("url", "") + bot_config["TOKEN"]
-
-    WEBAPP_HOST = webhook_config.get("app_host", "")  # or ip
-    WEBAPP_PORT = webhook_config.get("app_port", -1)
 
     start_webhook(
         dispatcher=dp,
