@@ -1,7 +1,7 @@
 {
-  "host": "https://your.domain",
+  "host": "0.0.0.0",
   "path": "",
   "url": "https://2968-80-92-233-52.ngrok.io",
-  "apphost": "localhost",
+  "apphost": "0.0.0.0",
   "appport": 8080
 }
