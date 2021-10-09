@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from collections.abc import Iterable
 
 import aiogram.utils.exceptions
@@ -36,7 +37,8 @@ WEBHOOK_PATH = webhook_config.get("path", "") + bot_config['TOKEN']
 WEBHOOK_URL = webhook_config.get("url", "") + bot_config["TOKEN"]
 
 WEBAPP_HOST = webhook_config.get("app_host", "")  # or ip
-WEBAPP_PORT = webhook_config.get("app_port", -1)
+WEBAPP_PORT = int(os.getenv('PORT', 5000))
+
 
 class MainStates(StatesGroup):
     show_contact = State()
