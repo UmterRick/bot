@@ -371,8 +371,6 @@ except ValueError:
     pass
 try:
     admin_user = UserLogin(login='Admin', password=generate_password_hash('123456'))
-    db.session.add(admin_user)
-    db.session.commit()
 except:
     pass
 app.secret_key = app.config['SECRET']
