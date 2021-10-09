@@ -1,7 +1,7 @@
 {
-  "host": "https://mms-bot.herokuapp.com",
+  "host": "https://bot-db-app.herokuapp.com",
   "path": "/",
-  "url": "https://mms-bot.herokuapp.com/",
+  "url": "https://bot-db-app.herokuapp.com/",
   "app_host": "0.0.0.0",
   "app_port": 5000
 }
