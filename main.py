@@ -22,13 +22,6 @@ bot_config = read_config('bot.json')
 webhook_config = read_config('webhook.json')
 memory_storage = MemoryStorage()
 
-WEBHOOK_HOST = webhook_config.get("host", "")
-WEBHOOK_PATH = webhook_config.get("path", "")
-WEBHOOK_URL = webhook_config.get("url", "")
-
-WEBAPP_HOST = webhook_config.get("apphost", "")  # or ip
-WEBAPP_PORT = webhook_config.get("appport", -1)
-
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=bot_config.get("TOKEN", ""))
@@ -740,12 +733,11 @@ def repeat(coroutine, curr_loop):
 
 async def on_startup(dispatcher):  # there was dispatcher in args
     logger.info(f"on start dispatcher: {dispatcher}")
-    await bot.set_webhook(WEBHOOK_URL)
+    await bot.set_webhook(WEBHOOK_URL, drop_pending_updates=True)
     # insert code here to run it after start
 
 
 async def on_shutdown(dispatcher):
-    logging.warning('Shutting down..')
     logger.info("===== SHUTDOWN BOT ====")
     await bot.delete_webhook()
     await dispatcher.storage.close()
@@ -775,13 +767,19 @@ if __name__ == "__main__":
     loop.run_until_complete(bot.set_my_commands(commands))
     loop.run_until_complete(get_content(store))
     loop.call_later(600, repeat, schedule_push, loop)
+    # dp.bot.set_webhook(webhook_config['url']+bot_config['TOKEN'],)
+    WEBHOOK_HOST = webhook_config.get("host", "")
+    WEBHOOK_PATH = webhook_config.get("path", "") + bot_config['TOKEN']
+    WEBHOOK_URL = webhook_config.get("url", "") + bot_config["TOKEN"]
+
+    WEBAPP_HOST = webhook_config.get("app_host", "")  # or ip
+    WEBAPP_PORT = webhook_config.get("app_port", -1)
 
     start_webhook(
         dispatcher=dp,
-        webhook_path=webhook_config['path'],
-        on_startup=on_startup,
-        on_shutdown=on_shutdown,
+        webhook_path=WEBHOOK_PATH,
         skip_updates=True,
+        on_startup=on_startup,
         host=WEBAPP_HOST,
         port=WEBAPP_PORT,
     )

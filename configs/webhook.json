@@ -1,7 +1,7 @@
 {
-  "host": "0.0.0.0",
-  "path": "",
-  "url": "https://2968-80-92-233-52.ngrok.io",
-  "apphost": "0.0.0.0",
-  "appport": 8080
+  "host": "https://mms-bot.herokuapp.com",
+  "path": "/webhook/",
+  "url": "https://mms-bot.herokuapp.com/webhook",
+  "app_host": "0.0.0.0",
+  "app_port": 8080
 }
