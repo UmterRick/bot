@@ -3,5 +3,5 @@
   "path": "/webhook/",
   "url": "https://mms-bot.herokuapp.com/webhook",
   "app_host": "0.0.0.0",
-  "app_port": 8080
+  "app_port": 5000
 }
