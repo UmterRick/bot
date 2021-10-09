@@ -1,10 +1,10 @@
 {
-  "dbname": "d69ql3vp621mrt",
-  "user": "kpfggqiomxttfi",
-  "password": "492052dade622c2231ac7a828028f1a70c796b75863023cdc32874c598684656",
-  "host": "ec2-52-30-81-192.eu-west-1.compute.amazonaws.com",
+  "dbname": "dbc80e0m03okq5",
+  "user": "ziiwwjpioukpgq",
+  "password": "7e9fe9c38bebf8e331e2266b89310306b67dc26285547b34aee14569892c226e",
+  "host": "ec2-54-155-92-75.eu-west-1.compute.amazonaws.com",
   "port": 5432,
   "expected_tables": ["groups", "categories", "courses", "users", "user_group", "user_login"],
-  "url": "postgresql://kpfggqiomxttfi:492052dade622c2231ac7a828028f1a70c796b75863023cdc32874c598684656@ec2-52-30-81-192.eu-west-1.compute.amazonaws.com:5432/d69ql3vp621mrt"
+  "url": "postgresql://ziiwwjpioukpgq:7e9fe9c38bebf8e331e2266b89310306b67dc26285547b34aee14569892c226e@ec2-54-155-92-75.eu-west-1.compute.amazonaws.com:5432/dbc80e0m03okq5"
 
 }
