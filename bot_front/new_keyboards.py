@@ -210,7 +210,6 @@ async def groups_stream_kb(course_id, store):
         msg = str()
         for group in stream:
             gr_type = '🌐 Online' if group['type'] else '🏠 Offline'
-            print('Logging group time:', group['time'])
             msg += f"📅{group['day']}  🕒{group['time'].strftime('%H:%M')} {gr_type}\n"
         btn = InlineKeyboardButton("Подати заявку у групу", callback_data=json.dumps([course_id, stream_id, 'enroll']))
         keyboard.add(btn)
