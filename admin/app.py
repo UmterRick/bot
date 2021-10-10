@@ -199,6 +199,7 @@ class UserGroupModel(db.Model):
     user_id = db.Column(Integer, ForeignKey('users.id', ondelete='CASCADE', onupdate='CASCADE'))
     group_id = db.Column(Integer, ForeignKey('users.id', ondelete='CASCADE', onupdate='CASCADE'))
     type = db.Column(String(255))
+    push = db.Column(Integer)
 
     def __repr__(self):
         return self.id
