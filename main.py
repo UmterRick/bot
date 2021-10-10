@@ -645,7 +645,6 @@ async def schedule_push():
     for group in groups:
 
         group_data = await store.select_one('groups', {'id': group}, ('program_day', 'time', 'course'))
-        print(f"{group_data=}")
         course = await store.select_one('courses', {'id': group_data['course']}, ('name',))
         course_name = course['name']
         lesson_day = group_data['program_day']
@@ -653,7 +652,6 @@ async def schedule_push():
         for order, day in enumerate(week_days_tuple):
             if day == lesson_day:
                 day_before_lesson = week_days_tuple[order - 1]
-        print(f"{lesson_day=}\n{day_before_lesson=}")
         if today in (lesson_day, day_before_lesson):
             if today == day_before_lesson:
                 tomorrow = datetime.now() + timedelta(days=1)
@@ -670,7 +668,7 @@ async def schedule_push():
                         row = await store.select_one("user_group",
                                                      {'"user_id"': user, '"group_id"': group, 'type': 'student'},
                                                      ('push',))
-                        push = row['push'] if row else 1
+                        push = row['push'] if row['push'] is not None else 1
                         if push < 0:
                             user_data = await store.select_one('users', {'id': user}, ('telegram',))
                             user_chat = user_data['telegram']
