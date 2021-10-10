@@ -692,8 +692,10 @@ async def schedule_push():
 
                 logger.info(f"*** Today is Lesson in group id = {group}")
 
-                delta = group_datetime - now if group_datetime < now else now - group_datetime
-
+                delta = group_datetime - now if group_datetime > now else now - group_datetime
+                print(f"today = {now.strftime('%Y/%m/%d  %H:%M')}")
+                print(f"group = {group_datetime.strftime('%Y/%m/%d  %H:%M')}")
+                print(f"delta = {delta.seconds} s")
                 if delta.seconds < 2.5 * 60 * 60:
                     logger.info(f"*** Now - LessonTime < 10 min")
                     logger.info(f"*** START sending notifications")
