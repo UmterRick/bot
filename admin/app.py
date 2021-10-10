@@ -205,8 +205,8 @@ class UserGroupModel(db.Model):
 
 
 class UserGroupView(ModelView):
-    column_list = ('id', 'user_id', 'group_id', 'type')
-    column_editable_list = ('user_id', 'group_id', 'type')
+    column_list = ('id', 'user_id', 'group_id', 'type', 'push')
+    column_editable_list = ('user_id', 'group_id', 'type', 'push')
     column_sortable_list = ('user_id', 'group_id', 'type')
     column_searchable_list = ('user_id', 'group_id', 'type')
     form_columns = ('user_id', 'group_id', 'type')
