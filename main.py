@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 from collections.abc import Iterable
+import pytz
 
 import aiogram.utils.exceptions
 from aiogram import Dispatcher, Bot
@@ -637,8 +638,8 @@ async def note_was_read(call: types.CallbackQuery):
 
 async def schedule_push():
     await update_user_group(store)
-    now = datetime.now()
-
+    timezone = pytz.timezone('Europe/Kiev')
+    now = datetime.now(timezone)
     today = now.strftime("%A")
     users_groups = await store.select('user_group', {'type': 'student'}, ('"user_id"', '"group_id"', 'push'))
     groups = list(set([item['group_id'] for item in users_groups]))
@@ -654,7 +655,7 @@ async def schedule_push():
                 day_before_lesson = week_days_tuple[order - 1]
         if today in (lesson_day, day_before_lesson):
             if today == day_before_lesson:
-                tomorrow = datetime.now() + timedelta(days=1)
+                tomorrow = datetime.now(timezone) + timedelta(days=1)
                 group_datetime = tomorrow.replace(hour=group_data['time'].hour, minute=group_data['time'].minute)
 
                 logger.info(f"*** Tomorrow is lesson in {group} group")
@@ -687,7 +688,7 @@ async def schedule_push():
                     logger.info(f"*** SET push as WAITING")
 
             elif today == lesson_day:
-                group_datetime = datetime.now().replace(hour=group_data['time'].hour, minute=group_data['time'].minute)
+                group_datetime = datetime.now(timezone).replace(hour=group_data['time'].hour, minute=group_data['time'].minute)
 
                 logger.info(f"*** Today is Lesson in group id = {group}")
 
