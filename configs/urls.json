@@ -1,6 +1,6 @@
 {
-  "URL": "https://meandmyschool.org.ua/ru/",
-  "C_URL": "https://meandmyschool.org.ua/detalnishe-pro-prohramy/",
+  "URL": "https://meandmyschool.org.ua/",
+  "C_URL": "https://meandmyschool.org.ua/detalnishe-pro-kursy/",
   "HEADERS" :
     {
       "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:85.0) Gecko/20100101 Firefox/85.0"
