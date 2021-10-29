@@ -66,14 +66,14 @@ def select_greet_time():
 
 
 def first_push(course_name):
-    note_text = f"{select_greet_time()}, освітній центр ЯІМОЯШКОЛА, нагадує вам, " \
+    note_text = f"{select_greet_time()} освітній центр ЯІМОЯШКОЛА, нагадує вам, " \
                 f"що завтра в цей час  ми чекаємо вас на заняття\n" \
                 f"{course_name}"
     return note_text
 
 
 def second_push(course_name):
-    note_text = f"{select_greet_time()}, освітній центр ЯІМОЯШКОЛА, нагадує вам, " \
+    note_text = f"{select_greet_time()} освітній центр ЯІМОЯШКОЛА, нагадує вам, " \
                 f"що сьогодні  ми чекаємо вас на заняття\n" \
                 f"{course_name}"
     return note_text
