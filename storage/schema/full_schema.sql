@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS categories (
 
 CREATE TABLE IF NOT EXISTS courses (
 	"id" SERIAL NOT NULL UNIQUE,
-	"name" varchar(255) NOT NULL,
+	"name" varchar(255) NOT NULL UNIQUE ,
 	"category" INTEGER NOT NULL,
 	"trainer" varchar(255) NOT NULL,
 	"link" text default 'google.com',
