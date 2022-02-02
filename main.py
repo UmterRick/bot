@@ -17,7 +17,7 @@ from bot_front.new_keyboards import *
 from bot_front.messages_text import *
 from storage.db_utils import DataStore
 from user_utils import USER_TYPE, update_state
-from utils import read_config, set_logger, get_admin_group, week_days_tuple  # ,update_user_group
+from utils import read_config, set_logger, get_admin_group, week_days_tuple, update_user_group
 from datetime import datetime, timedelta
 
 bot_config = read_config('bot.json')
