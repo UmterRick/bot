@@ -375,10 +375,10 @@ async def courses_list_request(call: types.CallbackQuery):
         for course in courses:
             trainers = json.loads(course['trainer'])
             trainers = trainers.get('trainer')
+            print(trainers)
             course_body = f"✅✅✅" \
                           f"\n🔹<b>Назва курсу:</b>\n🔹{course['name']}" \
-                          f"\n🔸<b>Тренер:</b>\n🔸{', '.join(trainers)}" \
-                          f"\n🔸<b>Опис:</b>\n🔸{course['description']}" \
+                          f"\n🔸<b>Тренер:</b>\n🔸{', '.join(list(trainers))}" \
                           f"\n🔸<b>Опис:</b>\n🔸{course['description']}"
             new_msg = await bot.send_message(chat_id, course_body,
                                              parse_mode='HTML', reply_markup=await course_kb(course))
