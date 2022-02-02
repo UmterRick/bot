@@ -12,7 +12,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 
-from parser.mams_site import get_content
+from .parser.mams_site import get_content
 from bot_front.new_keyboards import *
 from bot_front.messages_text import *
 from storage.db_utils import DataStore
