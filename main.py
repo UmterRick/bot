@@ -12,7 +12,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 
-from .parser.mams_site import get_content
+from parser.mams_site import get_content
 from bot_front.new_keyboards import *
 from bot_front.messages_text import *
 from storage.db_utils import DataStore
@@ -768,7 +768,7 @@ def start_bot():
     logger.info(f"===== STARTUP BOT =====")
     existing_tables = store.check_existence()
     if not existing_tables[0]:
-        logger.error(
+        logger.warning(
             f" | Expected tables doesnt match: {existing_tables[1]} "
             f"from {database_config.get('expected_tables')} ")
 

@@ -75,10 +75,10 @@ class DataStore:
             row = cursor.fetchone()
 
         if not row:
-            logger.warning(f"{_getframe().f_code.co_name} | No row found {(table,)})")
+            logger.warning(f"{_getframe().f_code.co_name} | No row found {table})")
             return {}
         if cursor.rowcount > 1:
-            logger.error(f"{_getframe().f_code.co_name} | More than one row matched {(table,)})")
+            logger.error(f"{_getframe().f_code.co_name} | More than one row matched {table, keyvalues})")
             raise StoreError(500, "More than one row matched (%s)" % (table,))
         return dict(zip(retcols, row))
 

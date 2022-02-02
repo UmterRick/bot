@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS categories (
 	"id" SERIAL NOT NULL,
-	"name" varchar(255) NOT NULL,
+	"name" varchar(255) NOT NULL UNIQUE ,
 	CONSTRAINT "category_pk" PRIMARY KEY ("id")
 ) WITH (
   OIDS=FALSE
