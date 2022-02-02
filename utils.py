@@ -57,6 +57,7 @@ async def update_user_group(store):
         courses = await store.select('courses', None, ('id', 'trainer'))
         for course in courses:
             trainers = json.loads(course['trainer'])
+            print(trainers)
             trainers = trainers['trainer']
             if user['name'] in trainers:
                 groups = await store.select('groups', {'course': course['id']}, ('id', 'day', 'time'))
