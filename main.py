@@ -795,3 +795,6 @@ def start_bot():
         host=WEBAPP_HOST,
         port=WEBAPP_PORT,
     )
+
+if __name__ == "__main__":
+    start_bot()
