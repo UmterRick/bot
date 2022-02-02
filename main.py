@@ -374,8 +374,8 @@ async def courses_list_request(call: types.CallbackQuery):
             logger.warning("Skip deleting call message")
         for course in courses:
             trainers = json.loads(course['trainer'])
-            trainers = trainers.get('trainer')
-            print(trainers)
+            trainers = trainers.get('trainer', list())
+            logger.info(f" Trainers to course: {trainers}")
             course_body = f"✅✅✅" \
                           f"\n🔹<b>Назва курсу:</b>\n🔹{course['name']}" \
                           f"\n🔸<b>Тренер:</b>\n🔸{', '.join(list(trainers))}" \

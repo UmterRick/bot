@@ -36,6 +36,7 @@ def set_logger(logger_name) -> logging.Logger:
 
     c_handler = logging.StreamHandler()
     f_handler = logging.FileHandler(ROOT_DIR + f'/log/{logger_config.get("file")}')
+    print(f'''Set logger {logger_name} write to {ROOT_DIR + f"/log/{logger_config.get('file')}"} ''')
     c_handler.setLevel(levels.get(logger_config.get('level')))
     f_handler.setLevel(levels.get(logger_config.get('level')))
     # Create formatters and add it to handlers
