@@ -9,7 +9,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_babelex import Babel
 from flask_sqlalchemy import SQLAlchemy
 from wtforms import form, fields, validators
-from utils import week_days_translate, ROOT_DIR, read_config, set_logger
+import os
+import sys
+
+current = os.path.dirname(os.path.realpath(__file__))
+parent = os.path.dirname(current)
+sys.path.append(parent)
+
+from utils import read_config, set_logger, week_days_tuple, ROOT_DIR
 
 app = Flask(__name__)
 db_config = read_config('database.json')
