@@ -17,7 +17,7 @@ from bot_front.new_keyboards import *
 from bot_front.messages_text import *
 from storage.db_utils import DataStore
 from user_utils import USER_TYPE, update_state
-from utils import read_config, set_logger, get_admin_group, week_days_tuple  # ,update_user_group
+from utils import read_config, set_logger, get_admin_group, week_days_tuple, update_user_group
 from datetime import datetime, timedelta
 
 bot_config = read_config('bot.json')
@@ -374,11 +374,12 @@ async def courses_list_request(call: types.CallbackQuery):
             logger.warning("Skip deleting call message")
         for course in courses:
             trainers = json.loads(course['trainer'])
-            trainers = trainers.get('trainer')
+            # logger.info(f" Trainers to course 1: {trainers}")
+            trainers = trainers.get('trainers', list())
+            # logger.info(f" Trainers to course 2: {trainers}")
             course_body = f"✅✅✅" \
                           f"\n🔹<b>Назва курсу:</b>\n🔹{course['name']}" \
-                          f"\n🔸<b>Тренер:</b>\n🔸{', '.join(trainers)}" \
-                          f"\n🔸<b>Опис:</b>\n🔸{course['description']}" \
+                          f"\n🔸<b>Тренер:</b>\n🔸{', '.join(list(trainers))}" \
                           f"\n🔸<b>Опис:</b>\n🔸{course['description']}"
             new_msg = await bot.send_message(chat_id, course_body,
                                              parse_mode='HTML', reply_markup=await course_kb(course))
@@ -768,7 +769,7 @@ def start_bot():
     logger.info(f"===== STARTUP BOT =====")
     existing_tables = store.check_existence()
     if not existing_tables[0]:
-        logger.error(
+        logger.warning(
             f" | Expected tables doesnt match: {existing_tables[1]} "
             f"from {database_config.get('expected_tables')} ")
 

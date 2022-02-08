@@ -36,6 +36,7 @@ def set_logger(logger_name) -> logging.Logger:
 
     c_handler = logging.StreamHandler()
     f_handler = logging.FileHandler(ROOT_DIR + f'/log/{logger_config.get("file")}')
+    print(f'''Set logger {logger_name} write to {ROOT_DIR + f"/log/{logger_config.get('file')}"} ''')
     c_handler.setLevel(levels.get(logger_config.get('level')))
     f_handler.setLevel(levels.get(logger_config.get('level')))
     # Create formatters and add it to handlers
@@ -57,6 +58,7 @@ async def update_user_group(store):
         courses = await store.select('courses', None, ('id', 'trainer'))
         for course in courses:
             trainers = json.loads(course['trainer'])
+            print(trainers)
             trainers = trainers['trainer']
             if user['name'] in trainers:
                 groups = await store.select('groups', {'course': course['id']}, ('id', 'day', 'time'))
